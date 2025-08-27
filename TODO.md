@@ -1,0 +1,5 @@
+- Endpoint para salvar a descrição das vagas em uma nova tabela usando a URL como chave comum
+- Containerizar o projeto
+- Testes unitários
+- Observabilidade
+- Para escalabilidade, receber via websocket
