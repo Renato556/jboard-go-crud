@@ -18,6 +18,23 @@ func NewJobHandler(s services.JobService) *JobHandler {
 	return &JobHandler{svc: s}
 }
 
+func (h *JobHandler) FindAll(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "HTTP Method invalid", http.StatusMethodNotAllowed)
+		return
+	}
+	log.Printf("GET request received at /jobs")
+
+	jobs, err := h.svc.FindAll(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	log.Printf("Found %d jobs", len(jobs))
+
+	_ = json.NewEncoder(w).Encode(jobs)
+}
+
 func (h *JobHandler) CreateJob(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "HTTP Method invalid", http.StatusMethodNotAllowed)
