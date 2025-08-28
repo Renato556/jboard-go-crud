@@ -39,13 +39,13 @@ func main() {
 
 	// 5) Servidor HTTP
 	srv := &http.Server{
-		Addr:              ":8080",
+		Addr:              ":8081",
 		Handler:           router,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
 	go func() {
-		log.Println("Server started at port 8080")
+		log.Println("Server started at port 8081")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("erro ao iniciar servidor: %v", err)
 		}

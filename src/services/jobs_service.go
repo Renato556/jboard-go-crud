@@ -11,7 +11,6 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
-var ErrJobAlreadyExists = errors.New("job já existe e é idêntico")
 var ErrJobNotFound = errors.New("job não encontrado")
 
 type UpsertOutcome int
@@ -23,7 +22,6 @@ const (
 )
 
 type JobService interface {
-	FindAll(ctx context.Context) ([]models.Job, error)
 	CreateOrUpdate(ctx context.Context, job models.Job) (UpsertOutcome, error)
 	UpdateOnlyIfURLExists(ctx context.Context, job models.Job) error
 	DeleteOnlyIfURLExists(ctx context.Context, job models.Job) error
@@ -35,10 +33,6 @@ type jobService struct {
 
 func NewJobService(r repositories.JobRepository) JobService {
 	return &jobService{repo: r}
-}
-
-func (s *jobService) FindAll(ctx context.Context) ([]models.Job, error) {
-	return s.repo.FindAll(ctx)
 }
 
 func (s *jobService) CreateOrUpdate(ctx context.Context, job models.Job) (UpsertOutcome, error) {

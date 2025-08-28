@@ -15,7 +15,6 @@ var validate = validator.New()
 
 type JobRepository interface {
 	Create(ctx context.Context, job models.Job) error
-	FindAll(ctx context.Context) ([]models.Job, error)
 	FindByURL(ctx context.Context, url string) (models.Job, bool, error)
 	UpdateByURL(ctx context.Context, url string, job models.Job) error
 	DeleteByURL(ctx context.Context, url string, job models.Job) error
@@ -45,29 +44,6 @@ func (m *mongoJobRepository) ensureIndexes(ctx context.Context) error {
 	}
 	_, err := coll.Indexes().CreateOne(ctx, model)
 	return err
-}
-
-func (m *mongoJobRepository) FindAll(ctx context.Context) ([]models.Job, error) {
-	coll := m.client.Database(m.database).Collection(m.collection)
-
-	cur, err := coll.Find(ctx, bson.D{})
-	if err != nil {
-		return nil, err
-	}
-	defer cur.Close(ctx)
-
-	var results []models.Job
-	for cur.Next(ctx) {
-		var j models.Job
-		if err := cur.Decode(&j); err != nil {
-			return nil, err
-		}
-		results = append(results, j)
-	}
-	if err := cur.Err(); err != nil {
-		return nil, err
-	}
-	return results, nil
 }
 
 func (m *mongoJobRepository) Create(ctx context.Context, job models.Job) error {
