@@ -1,11 +1,11 @@
 package models
 
 import (
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"time"
 )
 
 type Job struct {
-	ID                      bson.ObjectID     `json:"_id,omitempty" bson:"_id,omitempty"`
+	ID                      string            `json:"id" bson:"_id" validate:"required"`
 	Title                   string            `json:"title" bson:"title" validate:"required"`
 	UpdatedAt               string            `json:"updatedAt" bson:"updatedAt"`
 	EmploymentType          string            `json:"employmentType" bson:"employmentType"`
@@ -19,4 +19,5 @@ type Job struct {
 	Url                     string            `json:"url" bson:"url" validate:"required"`
 	SeniorityLevel          string            `json:"seniorityLevel" bson:"seniorityLevel" validate:"required"`
 	Field                   string            `json:"field" bson:"field" validate:"required"`
+	ExpiresAt               time.Time         `json:"expiresAt" bson:"expiresAt"`
 }

@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"encoding/json"
-	"errors"
 	"log"
 	"net/http"
 
@@ -46,78 +45,39 @@ func (h *JobHandler) CreateJob(w http.ResponseWriter, r *http.Request) {
 			"message": "Job created successfully.",
 		})
 	case services.OutcomeUpdated:
-		log.Printf("Job already on DB, updated successfully")
+		log.Printf("Job already exists, updated with new information and extended expiration")
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"message": "Job updated successfully.",
-		})
-	case services.OutcomeUnchanged:
-		log.Printf("Job already on DB, unchanged")
-		w.WriteHeader(http.StatusNotModified)
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"message": "Job already on DB, unchanged.",
+			"message": "Job already exists, updated with new information and extended expiration.",
 		})
 	default:
 		http.Error(w, "Unknown error", http.StatusInternalServerError)
 	}
 }
 
-func (h *JobHandler) UpdateJob(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPut {
+func (h *JobHandler) GetAllJobs(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
 		http.Error(w, "HTTP Method invalid", http.StatusMethodNotAllowed)
 		return
 	}
 
-	var job models.Job
-	if err := json.NewDecoder(r.Body).Decode(&job); err != nil {
-		log.Println(err)
-		http.Error(w, "Invalid payload", http.StatusBadRequest)
-		return
-	}
-	log.Printf("PUT request received at /jobs with payload: %v", job)
+	log.Printf("GET request received at /v1/jobs")
 
-	err := h.svc.UpdateOnlyIfURLExists(r.Context(), job)
-
+	jobs, err := h.svc.FindAll(r.Context())
 	if err != nil {
-		if errors.Is(err, services.ErrJobNotFound) {
-			http.Error(w, "Job not found", http.StatusNotFound)
-			return
-		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("Error fetching jobs: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"message": "Job updated successfully",
-	})
-}
 
-func (h *JobHandler) DeleteJob(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodDelete {
-		http.Error(w, "HTTP Method invalid", http.StatusMethodNotAllowed)
+	if err := json.NewEncoder(w).Encode(jobs); err != nil {
+		log.Printf("Error encoding response: %v", err)
+		http.Error(w, "Error encoding response", http.StatusInternalServerError)
 		return
 	}
 
-	var job models.Job
-	if err := json.NewDecoder(r.Body).Decode(&job); err != nil {
-		log.Println(err)
-		http.Error(w, "Invalid payload", http.StatusBadRequest)
-		return
-	}
-	log.Printf("DELETE request received at /jobs with payload: %v", job)
-
-	err := h.svc.DeleteOnlyIfURLExists(r.Context(), job)
-
-	if err != nil {
-		if errors.Is(err, services.ErrJobNotFound) {
-			http.Error(w, "Job not found", http.StatusNotFound)
-			return
-		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"message": "Job deleted successfully",
-	})
+	log.Printf("Successfully returned %d jobs", len(jobs))
 }
