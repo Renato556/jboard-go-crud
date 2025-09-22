@@ -3,6 +3,3 @@
 
 # sensitive info
 .env
-
-# build files
-go.sum
