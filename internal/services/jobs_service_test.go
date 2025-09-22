@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 	"errors"
-	"jboard-go-crud/src/models"
+	"jboard-go-crud/internal/models"
 	"testing"
 )
 

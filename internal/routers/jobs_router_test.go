@@ -2,9 +2,9 @@ package routers
 
 import (
 	"context"
-	"jboard-go-crud/src/controllers"
-	"jboard-go-crud/src/models"
-	"jboard-go-crud/src/services"
+	"jboard-go-crud/internal/controllers"
+	"jboard-go-crud/internal/models"
+	"jboard-go-crud/internal/services"
 	"net/http"
 	"net/http/httptest"
 	"testing"

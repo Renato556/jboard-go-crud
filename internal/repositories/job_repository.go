@@ -3,7 +3,7 @@ package repositories
 import (
 	"context"
 	"errors"
-	"jboard-go-crud/src/models"
+	"jboard-go-crud/internal/models"
 	"time"
 
 	"github.com/go-playground/validator/v10"

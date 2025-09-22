@@ -2,17 +2,16 @@ package main
 
 import (
 	"context"
-	httpt "jboard-go-crud/src/controllers"
-	"jboard-go-crud/src/routers"
+	"jboard-go-crud/internal/config"
+	"jboard-go-crud/internal/controllers"
+	"jboard-go-crud/internal/repositories"
+	"jboard-go-crud/internal/routers"
+	"jboard-go-crud/internal/services"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"time"
-
-	"jboard-go-crud/src/config"
-	mongoadapter "jboard-go-crud/src/repositories"
-	"jboard-go-crud/src/services"
 
 	"github.com/joho/godotenv"
 )
@@ -28,13 +27,13 @@ func main() {
 	collName := os.Getenv("MONGODB_JOB_COLLECTION")
 
 	// 2) Repositório
-	jobRepo := mongoadapter.NewJobRepository(client, dbName, collName)
+	jobRepo := repositories.NewJobRepository(client, dbName, collName)
 
 	// 3) Serviço
 	jobService := services.NewJobService(jobRepo)
 
 	// 4) HTTP Handler + Router
-	jobHandler := httpt.NewJobHandler(jobService)
+	jobHandler := controllers.NewJobHandler(jobService)
 	router := routers.NewJobsController(jobHandler)
 
 	// 5) Servidor HTTP

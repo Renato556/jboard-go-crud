@@ -1,0 +1,26 @@
+name: jboard-go-crud
+location: eastus
+resourceGroup: jboard-microservices-rg
+
+containerApp:
+  cpu: 0.25
+  memory: 0.5Gi
+  minReplicas: 0
+  maxReplicas: 2
+
+networking:
+  ingress: internal
+  targetPort: 8080
+  allowInsecure: false
+
+healthCheck:
+  path: /v1/health
+  interval: 30s
+  timeout: 5s
+  retries: 3
+
+environment:
+  - name: PORT
+    value: "8080"
+  - name: GO_ENV
+    value: "production"

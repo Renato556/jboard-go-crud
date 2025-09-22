@@ -5,8 +5,8 @@ import (
 	"log"
 	"net/http"
 
-	"jboard-go-crud/src/models"
-	"jboard-go-crud/src/services"
+	"jboard-go-crud/internal/models"
+	"jboard-go-crud/internal/services"
 )
 
 type JobHandler struct {

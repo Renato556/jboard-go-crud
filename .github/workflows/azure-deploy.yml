@@ -1,0 +1,137 @@
+name: Deploy to Azure Container Apps
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+    types: [ closed ]
+
+env:
+  AZURE_CONTAINER_REGISTRY: jboardregistry
+  CONTAINER_APP_NAME: jboard-go-crud
+  RESOURCE_GROUP: jboard-microservices-rg
+  CONTAINER_APP_ENVIRONMENT: jboard-environment
+  IMAGE_NAME: jboard-go-crud
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' || (github.event.pull_request.merged == true && (github.event.pull_request.base.ref == 'master' || github.event.pull_request.base.ref == 'main'))
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Get Container Registry Name
+      id: registry
+      run: |
+        # Verificar se o registry existe, caso contrário usar um com sufixo
+        if az acr show --name ${{ env.AZURE_CONTAINER_REGISTRY }} --resource-group ${{ env.RESOURCE_GROUP }} > /dev/null 2>&1; then
+          echo "registry_name=${{ env.AZURE_CONTAINER_REGISTRY }}" >> $GITHUB_OUTPUT
+        else
+          # Procurar registry com prefixo jboardregistry
+          REGISTRY_NAME=$(az acr list --resource-group ${{ env.RESOURCE_GROUP }} --query "[?starts_with(name, 'jboardregistry')].name" -o tsv | head -1)
+          if [ -n "$REGISTRY_NAME" ]; then
+            echo "registry_name=$REGISTRY_NAME" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Nenhum Container Registry encontrado"
+            exit 1
+          fi
+        fi
+
+    - name: Build and push Docker image
+      run: |
+        REGISTRY_NAME="${{ steps.registry.outputs.registry_name }}"
+        
+        # Login to Azure Container Registry
+        az acr login --name $REGISTRY_NAME
+        
+        # Build and push image with multi-stage optimization
+        docker build \
+          --build-arg TARGETARCH=amd64 \
+          -t $REGISTRY_NAME.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+          -t $REGISTRY_NAME.azurecr.io/${{ env.IMAGE_NAME }}:latest \
+          .
+        
+        docker push $REGISTRY_NAME.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        docker push $REGISTRY_NAME.azurecr.io/${{ env.IMAGE_NAME }}:latest
+        
+        echo "✅ Imagem publicada: $REGISTRY_NAME.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+
+    - name: Deploy to Azure Container Apps
+      run: |
+        REGISTRY_NAME="${{ steps.registry.outputs.registry_name }}"
+        
+        # Verificar se a app existe
+        if ! az containerapp show --name ${{ env.CONTAINER_APP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} > /dev/null 2>&1; then
+          echo "❌ Container App não encontrada. Execute o script de infraestrutura primeiro."
+          exit 1
+        fi
+        
+        # Update container app with new image and environment variables
+        az containerapp update \
+          --name ${{ env.CONTAINER_APP_NAME }} \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --image $REGISTRY_NAME.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+          --set-env-vars \
+            MONGODB_URI="${{ secrets.MONGODB_URI }}" \
+            MONGODB_DATABASE_NAME="${{ secrets.MONGODB_DATABASE_NAME }}" \
+            MONGODB_JOB_COLLECTION="${{ secrets.MONGODB_JOB_COLLECTION }}" \
+            GO_ENV="production" \
+            PORT="8080" \
+          --cpu 0.25 \
+          --memory 0.5Gi \
+          --min-replicas 0 \
+          --max-replicas 2
+        
+        echo "✅ Deploy realizado com sucesso"
+
+    - name: Wait for deployment and verify
+      run: |
+        echo "⏳ Aguardando deploy ser aplicado..."
+        sleep 45
+        
+        # Get the internal FQDN
+        FQDN=$(az containerapp show \
+          --name ${{ env.CONTAINER_APP_NAME }} \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --query properties.configuration.ingress.fqdn \
+          --output tsv)
+        
+        if [ -n "$FQDN" ]; then
+          echo "🌐 Aplicação disponível internamente em: https://$FQDN"
+          
+          # Verificar status da revisão
+          REVISION_STATUS=$(az containerapp revision list \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query "[0].properties.healthState" \
+            --output tsv)
+          
+          echo "📊 Status da revisão: $REVISION_STATUS"
+          
+          if [ "$REVISION_STATUS" = "Healthy" ]; then
+            echo "✅ Deploy verificado com sucesso!"
+          else
+            echo "⚠️  Deploy pode estar em andamento. Verifique os logs se necessário."
+          fi
+        else
+          echo "⚠️  FQDN não encontrado. Verifique a configuração do ingress."
+        fi
+
+    - name: Show deployment info
+      run: |
+        echo "📋 Informações do deploy:"
+        echo "   • Resource Group: ${{ env.RESOURCE_GROUP }}"
+        echo "   • Container App: ${{ env.CONTAINER_APP_NAME }}"
+        echo "   • Imagem: ${{ steps.registry.outputs.registry_name }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+        echo "   • Commit: ${{ github.sha }}"
+        echo ""
+        echo "🔍 Para verificar logs:"
+        echo "   az containerapp logs show --name ${{ env.CONTAINER_APP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} --follow"

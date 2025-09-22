@@ -3,8 +3,8 @@ package services
 import (
 	"context"
 
-	"jboard-go-crud/src/models"
-	"jboard-go-crud/src/repositories"
+	"jboard-go-crud/internal/models"
+	"jboard-go-crud/internal/repositories"
 )
 
 type UpsertOutcome int

@@ -1,11 +1,11 @@
 package routers
 
 import (
-	http2 "jboard-go-crud/src/controllers"
+	"jboard-go-crud/internal/controllers"
 	"net/http"
 )
 
-func NewJobsController(jobHandler *http2.JobHandler) http.Handler {
+func NewJobsController(jobHandler *controllers.JobHandler) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/jobs", jobHandler.CreateJob)
 	mux.HandleFunc("GET /v1/jobs", jobHandler.GetAllJobs)
