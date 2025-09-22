@@ -79,6 +79,7 @@ jobs:
           --name ${{ env.CONTAINER_APP_NAME }} \
           --resource-group ${{ env.RESOURCE_GROUP }} \
           --image $REGISTRY_NAME.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+          --target-port 8080 \
           --set-env-vars \
             MONGODB_URI="${{ secrets.MONGODB_URI }}" \
             MONGODB_DATABASE_NAME="${{ secrets.MONGODB_DATABASE_NAME }}" \
