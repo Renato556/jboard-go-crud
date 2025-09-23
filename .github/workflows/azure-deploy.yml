@@ -79,8 +79,6 @@ jobs:
           --name ${{ env.CONTAINER_APP_NAME }} \
           --resource-group ${{ env.RESOURCE_GROUP }} \
           --image $REGISTRY_NAME.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-          --ingress internal \
-          --target-port 8080 \
           --set-env-vars \
             MONGODB_URI="${{ secrets.MONGODB_URI }}" \
             MONGODB_DATABASE_NAME="${{ secrets.MONGODB_DATABASE_NAME }}" \
@@ -91,6 +89,13 @@ jobs:
           --memory 0.5Gi \
           --min-replicas 0 \
           --max-replicas 2
+        
+        # Update ingress configuration separately
+        az containerapp ingress update \
+          --name ${{ env.CONTAINER_APP_NAME }} \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --type internal \
+          --target-port 8080
         
         echo "✅ Deploy realizado com sucesso"
 
