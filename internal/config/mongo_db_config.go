@@ -7,8 +7,9 @@ import (
 	"os"
 	"time"
 
-	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var mongoClient *mongo.Client
@@ -21,12 +22,16 @@ func InitConnection() {
 
 	opts := options.Client().ApplyURI(uri).
 		SetConnectTimeout(30 * time.Second).
-		SetServerSelectionTimeout(30 * time.Second)
+		SetServerSelectionTimeout(30 * time.Second).
+		SetMaxPoolSize(10).
+		SetMinPoolSize(1).
+		SetRetryWrites(true).
+		SetRetryReads(true)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	client, err := mongo.Connect(opts)
+	client, err := mongo.Connect(ctx, opts)
 	if err != nil {
 		log.Printf("Failed to connect to MongoDB: %v", err)
 		panic(err)
@@ -35,8 +40,8 @@ func InitConnection() {
 	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	err = client.Ping(ctx, nil)
-	if err != nil {
+	var result bson.M
+	if err := client.Database("admin").RunCommand(ctx, bson.D{{"ping", 1}}).Decode(&result); err != nil {
 		log.Printf("Failed to ping MongoDB: %v", err)
 		panic(err)
 	}
