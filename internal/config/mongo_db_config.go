@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
-	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
@@ -19,19 +19,29 @@ func InitConnection() {
 		log.Fatal("Set your 'MONGODB_URI' environment variable. ")
 	}
 
-	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
-	opts := options.Client().ApplyURI(uri).SetServerAPIOptions(serverAPI)
+	opts := options.Client().ApplyURI(uri).
+		SetConnectTimeout(30 * time.Second).
+		SetServerSelectionTimeout(30 * time.Second)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	client, err := mongo.Connect(opts)
 	if err != nil {
+		log.Printf("Failed to connect to MongoDB: %v", err)
 		panic(err)
 	}
 
-	var result bson.M
-	if err := client.Database("admin").RunCommand(context.TODO(), bson.D{{"ping", 1}}).Decode(&result); err != nil {
+	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	err = client.Ping(ctx, nil)
+	if err != nil {
+		log.Printf("Failed to ping MongoDB: %v", err)
 		panic(err)
 	}
+
 	fmt.Println("Successful connection to MongoDB")
-
 	mongoClient = client
 }
 
