@@ -67,8 +67,6 @@ jobs:
           ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
           ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
         platforms: linux/amd64
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
 
     - name: Deploy to Azure Container Apps
       uses: azure/container-apps-deploy-action@v2
