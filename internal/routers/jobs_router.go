@@ -2,6 +2,7 @@ package routers
 
 import (
 	"jboard-go-crud/internal/controllers"
+	"log"
 	"net/http"
 )
 
@@ -13,8 +14,10 @@ func NewJobsController(jobHandler *controllers.JobHandler) http.Handler {
 	return mux
 }
 
-func healthCheck(w http.ResponseWriter, r *http.Request) {
+func healthCheck(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{"status":"healthy","service":"jboard-go-crud"}`))
+	if _, err := w.Write([]byte(`{"status":"healthy","service":"jboard-go-crud"}`)); err != nil {
+		log.Printf("Health check write error: %v", err)
+	}
 }

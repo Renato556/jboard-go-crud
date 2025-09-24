@@ -17,26 +17,28 @@ import (
 )
 
 func main() {
+	log.Printf("Starting jboard-go-crud application...")
+
 	_ = godotenv.Load()
 
-	// 1) Infra: Mongo client
+	// 1) MongoDB connection
 	config.InitConnection()
-	client := config.GetMongoClient()
+	client := config.GetClient()
 
 	dbName := os.Getenv("MONGODB_DATABASE_NAME")
 	collName := os.Getenv("MONGODB_JOB_COLLECTION")
 
-	// 2) Repositório
+	if dbName == "" || collName == "" {
+		log.Printf("WARNING: Missing MongoDB environment variables - DB: '%s', Collection: '%s'", dbName, collName)
+	}
+
+	// 2) Initialize layers
 	jobRepo := repositories.NewJobRepository(client, dbName, collName)
-
-	// 3) Serviço
 	jobService := services.NewJobService(jobRepo)
-
-	// 4) HTTP Handler + Router
 	jobHandler := controllers.NewJobHandler(jobService)
 	router := routers.NewJobsController(jobHandler)
 
-	// 5) Servidor HTTP
+	// 3) HTTP Server
 	srv := &http.Server{
 		Addr:              ":8080",
 		Handler:           router,
@@ -44,19 +46,24 @@ func main() {
 	}
 
 	go func() {
-		log.Println("Server started at port 8080")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("erro ao iniciar servidor: %v", err)
+			log.Fatalf("Server failed to start: %v", err)
 		}
 	}()
+
+	log.Printf("Server ready at port 8080")
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 	<-quit
 
+	log.Printf("Shutting down gracefully...")
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	_ = srv.Shutdown(ctx)
-	_ = config.CloseConnection(ctx)
+	config.CloseConnection()
+
+	log.Printf("Application stopped")
 }

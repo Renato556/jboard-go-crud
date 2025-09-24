@@ -25,32 +25,36 @@ func (h *JobHandler) CreateJob(w http.ResponseWriter, r *http.Request) {
 
 	var job models.Job
 	if err := json.NewDecoder(r.Body).Decode(&job); err != nil {
-		log.Println(err)
+		log.Printf("Invalid JSON payload: %v", err)
 		http.Error(w, "Invalid payload", http.StatusBadRequest)
 		return
 	}
-	log.Printf("POST request received at /jobs with payload: %v", job)
+
+	// Log apenas campos críticos para debugging
+	log.Printf("Job payload: ID='%s', Title='%s', Field='%s'", job.ID, job.Title, job.Field)
 
 	outcome, err := h.svc.CreateOrUpdate(r.Context(), job)
 	if err != nil {
+		log.Printf("CreateOrUpdate failed for job '%s': %v", job.ID, err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	switch outcome {
 	case services.OutcomeCreated:
-		log.Printf("Job created successfully")
+		log.Printf("Job created: %s", job.ID)
 		w.WriteHeader(http.StatusCreated)
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"message": "Job created successfully.",
 		})
 	case services.OutcomeUpdated:
-		log.Printf("Job already exists, updated with new information and extended expiration")
+		log.Printf("Job updated: %s", job.ID)
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"message": "Job already exists, updated with new information and extended expiration.",
 		})
 	default:
+		log.Printf("Unknown outcome %d for job %s", outcome, job.ID)
 		http.Error(w, "Unknown error", http.StatusInternalServerError)
 	}
 }
@@ -61,11 +65,9 @@ func (h *JobHandler) GetAllJobs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("GET request received at /v1/jobs")
-
 	jobs, err := h.svc.FindAll(r.Context())
 	if err != nil {
-		log.Printf("Error fetching jobs: %v", err)
+		log.Printf("FindAll failed: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -74,10 +76,10 @@ func (h *JobHandler) GetAllJobs(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	if err := json.NewEncoder(w).Encode(jobs); err != nil {
-		log.Printf("Error encoding response: %v", err)
+		log.Printf("JSON encode error: %v", err)
 		http.Error(w, "Error encoding response", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("Successfully returned %d jobs", len(jobs))
+	log.Printf("Returned %d jobs", len(jobs))
 }

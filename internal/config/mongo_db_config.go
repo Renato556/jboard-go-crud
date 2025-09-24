@@ -17,7 +17,7 @@ var mongoClient *mongo.Client
 func InitConnection() {
 	uri := os.Getenv("MONGODB_URI")
 	if uri == "" {
-		log.Fatal("Set your 'MONGODB_URI' environment variable. ")
+		log.Fatal("MONGODB_URI environment variable not set")
 	}
 
 	opts := options.Client().ApplyURI(uri).
@@ -33,8 +33,7 @@ func InitConnection() {
 
 	client, err := mongo.Connect(ctx, opts)
 	if err != nil {
-		log.Printf("Failed to connect to MongoDB: %v", err)
-		panic(err)
+		log.Fatalf("MongoDB connection failed: %v", err)
 	}
 
 	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
@@ -42,21 +41,29 @@ func InitConnection() {
 
 	var result bson.M
 	if err := client.Database("admin").RunCommand(ctx, bson.D{{"ping", 1}}).Decode(&result); err != nil {
-		log.Printf("Failed to ping MongoDB: %v", err)
-		panic(err)
+		log.Fatalf("MongoDB ping failed: %v", err)
 	}
 
-	fmt.Println("Successful connection to MongoDB")
+	fmt.Println("MongoDB connected successfully")
 	mongoClient = client
 }
 
-func GetMongoClient() *mongo.Client {
+func GetClient() *mongo.Client {
+	if mongoClient == nil {
+		log.Printf("MongoDB client not initialized")
+		return nil
+	}
 	return mongoClient
 }
 
-func CloseConnection(ctx context.Context) error {
-	if mongoClient == nil {
-		return nil
+func CloseConnection() {
+	if mongoClient != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		if err := mongoClient.Disconnect(ctx); err != nil {
+			log.Printf("MongoDB disconnect error: %v", err)
+		}
+		mongoClient = nil
 	}
-	return mongoClient.Disconnect(ctx)
 }
