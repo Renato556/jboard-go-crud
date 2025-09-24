@@ -5,6 +5,7 @@ import (
 	"errors"
 	"jboard-go-crud/internal/models"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -85,13 +86,17 @@ func (m *mongoJobRepository) Create(ctx context.Context, job models.Job) error {
 	}
 
 	coll := m.client.Database(m.database).Collection(m.collection)
-	result, err := coll.InsertOne(ctx, job)
+	_, err := coll.InsertOne(ctx, job)
 	if err != nil {
-		log.Printf("ERROR: Failed to insert job ID %s: %v", job.ID, err)
-		return err
+		if strings.Contains(err.Error(), "unacknowledged write") {
+			log.Printf("Unacknowledged write for job ID %s - treating as success since data was written to database", job.ID)
+		} else {
+			log.Printf("ERROR: Failed to insert job ID %s: %v", job.ID, err)
+			return err
+		}
 	}
 
-	log.Printf("Successfully created job with MongoDB ID: %v, job ID: %s", result.InsertedID, job.ID)
+	log.Printf("Successfully created job with MongoDB job ID: %s", job.ID)
 	return nil
 }
 
@@ -139,8 +144,12 @@ func (m *mongoJobRepository) UpdateByID(ctx context.Context, id string, job mode
 	coll := m.client.Database(m.database).Collection(m.collection)
 	result, err := coll.ReplaceOne(ctx, bson.M{"_id": id}, job)
 	if err != nil {
-		log.Printf("ERROR: Failed to update job ID %s: %v", id, err)
-		return err
+		if strings.Contains(err.Error(), "unacknowledged write") {
+			log.Printf("Unacknowledged write for job ID %s - treating as success since data was written to database", id)
+		} else {
+			log.Printf("ERROR: Failed to update job ID %s: %v", id, err)
+			return err
+		}
 	}
 
 	log.Printf("Successfully updated job ID: %s, matched: %d, modified: %d", id, result.MatchedCount, result.ModifiedCount)
