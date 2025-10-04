@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 )
 
@@ -26,22 +27,49 @@ func main() {
 	client := config.GetClient()
 
 	dbName := os.Getenv("MONGODB_DATABASE_NAME")
-	collName := os.Getenv("MONGODB_JOB_COLLECTION")
-
-	if dbName == "" || collName == "" {
-		log.Printf("WARNING: Missing MongoDB environment variables - DB: '%s', Collection: '%s'", dbName, collName)
+	if dbName == "" {
+		log.Fatal("MONGODB_DATABASE_NAME environment variable not set")
 	}
 
-	// 2) Initialize layers
-	jobRepo := repositories.NewJobRepository(client, dbName, collName)
+	// 2) Initialize collections configuration
+	jobCollName := os.Getenv("MONGODB_JOB_COLLECTION")
+	userCollName := os.Getenv("MONGODB_USER_COLLECTION")
+
+	// Set default collection names if not provided
+	if jobCollName == "" {
+		jobCollName = "jobs"
+		log.Printf("Using default jobs collection name: %s", jobCollName)
+	}
+	if userCollName == "" {
+		userCollName = "users"
+		log.Printf("Using default users collection name: %s", userCollName)
+	}
+
+	log.Printf("MongoDB configuration - DB: '%s', Jobs Collection: '%s', Users Collection: '%s'",
+		dbName, jobCollName, userCollName)
+
+	// 3) Initialize repositories and services
+	jobRepo := repositories.NewJobRepository(client, dbName, jobCollName)
 	jobService := services.NewJobService(jobRepo)
 	jobHandler := controllers.NewJobHandler(jobService)
-	router := routers.NewJobsController(jobHandler)
 
-	// 3) HTTP Server
+	userRepo := repositories.NewUserRepository(client, dbName, userCollName)
+	userService := services.NewUserService(userRepo)
+	userHandler := controllers.NewUserHandler(userService)
+
+	// 4) Initialize routers
+	jobRouter := routers.NewJobsController(jobHandler)
+	userRouter := routers.NewUsersController(userHandler)
+
+	// 5) Create main router and mount sub-routers
+	mainRouter := mux.NewRouter()
+	mainRouter.PathPrefix("/v1/jobs").Handler(jobRouter)
+	mainRouter.PathPrefix("/v1/users").Handler(userRouter)
+
+	// 6) HTTP Server
 	srv := &http.Server{
 		Addr:              ":8080",
-		Handler:           router,
+		Handler:           mainRouter,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
