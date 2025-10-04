@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"errors"
+	"jboard-go-crud/internal/config"
 	"jboard-go-crud/internal/models"
 	"log"
 	"strings"
@@ -24,17 +25,13 @@ type JobRepository interface {
 }
 
 type mongoJobRepository struct {
-	client     *mongo.Client
-	database   string
-	collection string
+	database string
 }
 
 func NewJobRepository(client *mongo.Client, dbName, collectionName string) JobRepository {
 	log.Printf("Creating new JobRepository with database: %s, collection: %s", dbName, collectionName)
 	repo := &mongoJobRepository{
-		client:     client,
-		database:   dbName,
-		collection: collectionName,
+		database: dbName,
 	}
 	if client != nil {
 		log.Printf("MongoDB client is available, ensuring indexes...")
@@ -45,14 +42,18 @@ func NewJobRepository(client *mongo.Client, dbName, collectionName string) JobRe
 	return repo
 }
 
+func (m *mongoJobRepository) getCollection() *mongo.Collection {
+	return config.GetJobsCollection(m.database)
+}
+
 func (m *mongoJobRepository) ensureIndexes(ctx context.Context) error {
 	log.Printf("Ensuring TTL index on expiresAt field...")
-	if m.client == nil {
-		log.Printf("ERROR: MongoDB client is nil when ensuring indexes")
-		return errors.New("MongoDB client is nil")
-	}
 
-	coll := m.client.Database(m.database).Collection(m.collection)
+	coll := m.getCollection()
+	if coll == nil {
+		log.Printf("ERROR: Failed to get jobs collection when ensuring indexes")
+		return errors.New("failed to get jobs collection")
+	}
 
 	ttlModel := mongo.IndexModel{
 		Keys:    bson.D{{Key: "expiresAt", Value: 1}},
@@ -80,12 +81,12 @@ func (m *mongoJobRepository) Create(ctx context.Context, job models.Job) error {
 	job.ExpiresAt = time.Now().Add(12*time.Hour + 1*time.Minute)
 	log.Printf("Set expiresAt to: %v for job ID: %s", job.ExpiresAt, job.ID)
 
-	if m.client == nil {
-		log.Printf("ERROR: MongoDB client is nil in Create")
-		return errors.New("MongoDB client is nil")
+	coll := m.getCollection()
+	if coll == nil {
+		log.Printf("ERROR: Failed to get jobs collection in Create")
+		return errors.New("failed to get jobs collection")
 	}
 
-	coll := m.client.Database(m.database).Collection(m.collection)
 	_, err := coll.InsertOne(ctx, job)
 	if err != nil {
 		if strings.Contains(err.Error(), "unacknowledged write") {
@@ -103,12 +104,12 @@ func (m *mongoJobRepository) Create(ctx context.Context, job models.Job) error {
 func (m *mongoJobRepository) FindByID(ctx context.Context, id string) (models.Job, bool, error) {
 	log.Printf("Repository FindByID called for ID: %s", id)
 
-	if m.client == nil {
-		log.Printf("ERROR: MongoDB client is nil in FindByID")
-		return models.Job{}, false, errors.New("MongoDB client is nil")
+	coll := m.getCollection()
+	if coll == nil {
+		log.Printf("ERROR: Failed to get jobs collection in FindByID")
+		return models.Job{}, false, errors.New("failed to get jobs collection")
 	}
 
-	coll := m.client.Database(m.database).Collection(m.collection)
 	var result models.Job
 	err := coll.FindOne(ctx, bson.M{"_id": id}).Decode(&result)
 	if err != nil {
@@ -136,12 +137,12 @@ func (m *mongoJobRepository) UpdateByID(ctx context.Context, id string, job mode
 	job.ExpiresAt = time.Now().Add(12*time.Hour + 1*time.Minute)
 	log.Printf("Updated expiresAt to: %v for job ID: %s", job.ExpiresAt, id)
 
-	if m.client == nil {
-		log.Printf("ERROR: MongoDB client is nil in UpdateByID")
-		return errors.New("MongoDB client is nil")
+	coll := m.getCollection()
+	if coll == nil {
+		log.Printf("ERROR: Failed to get jobs collection in UpdateByID")
+		return errors.New("failed to get jobs collection")
 	}
 
-	coll := m.client.Database(m.database).Collection(m.collection)
 	result, err := coll.ReplaceOne(ctx, bson.M{"_id": id}, job)
 	if err != nil {
 		if strings.Contains(err.Error(), "unacknowledged write") {
@@ -150,27 +151,32 @@ func (m *mongoJobRepository) UpdateByID(ctx context.Context, id string, job mode
 			log.Printf("ERROR: Failed to update job ID %s: %v", id, err)
 			return err
 		}
+	} else {
+		log.Printf("Successfully updated job ID: %s, matched: %d, modified: %d", id, result.MatchedCount, result.ModifiedCount)
 	}
 
-	log.Printf("Successfully updated job ID: %s, matched: %d, modified: %d", id, result.MatchedCount, result.ModifiedCount)
 	return nil
 }
 
 func (m *mongoJobRepository) FindAll(ctx context.Context) ([]models.Job, error) {
 	log.Printf("Repository FindAll called")
 
-	if m.client == nil {
-		log.Printf("ERROR: MongoDB client is nil in FindAll")
-		return nil, errors.New("MongoDB client is nil")
+	coll := m.getCollection()
+	if coll == nil {
+		log.Printf("ERROR: Failed to get jobs collection in FindAll")
+		return nil, errors.New("failed to get jobs collection")
 	}
 
-	coll := m.client.Database(m.database).Collection(m.collection)
 	cursor, err := coll.Find(ctx, bson.M{})
 	if err != nil {
 		log.Printf("ERROR: Failed to execute find query: %v", err)
 		return nil, err
 	}
-	defer cursor.Close(ctx)
+	defer func() {
+		if closeErr := cursor.Close(ctx); closeErr != nil {
+			log.Printf("WARNING: Error closing cursor: %v", closeErr)
+		}
+	}()
 
 	var jobs []models.Job
 	if err = cursor.All(ctx, &jobs); err != nil {
