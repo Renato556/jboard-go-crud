@@ -57,14 +57,20 @@ func main() {
 	userService := services.NewUserService(userRepo)
 	userHandler := controllers.NewUserHandler(userService)
 
+	skillRepo := repositories.NewSkillRepository(client, dbName, "skills")
+	skillService := services.NewSkillService(skillRepo)
+	skillHandler := controllers.NewSkillHandler(skillService)
+
 	// 4) Initialize routers
 	jobRouter := routers.NewJobsController(jobHandler)
 	userRouter := routers.NewUsersController(userHandler)
+	skillRouter := routers.NewSkillsController(skillHandler)
 
 	// 5) Create main router and mount sub-routers
 	mainRouter := mux.NewRouter()
 	mainRouter.PathPrefix("/v1/jobs").Handler(jobRouter)
 	mainRouter.PathPrefix("/v1/users").Handler(userRouter)
+	mainRouter.PathPrefix("/v1/skills").Handler(skillRouter)
 
 	// 6) HTTP Server
 	srv := &http.Server{
