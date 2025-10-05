@@ -68,14 +68,6 @@ func CloseConnection() {
 	}
 }
 
-func GetDatabase(dbName string) *mongo.Database {
-	if mongoClient == nil {
-		log.Printf("MongoDB client not initialized")
-		return nil
-	}
-	return mongoClient.Database(dbName)
-}
-
 func GetCollection(dbName, collectionName string) *mongo.Collection {
 	if mongoClient == nil {
 		log.Printf("MongoDB client not initialized")
@@ -87,7 +79,7 @@ func GetCollection(dbName, collectionName string) *mongo.Collection {
 func GetJobsCollection(dbName string) *mongo.Collection {
 	jobsCollectionName := os.Getenv("MONGODB_JOB_COLLECTION")
 	if jobsCollectionName == "" {
-		jobsCollectionName = "jobs" // fallback padrão
+		jobsCollectionName = "jobs"
 	}
 	return GetCollection(dbName, jobsCollectionName)
 }
@@ -95,7 +87,7 @@ func GetJobsCollection(dbName string) *mongo.Collection {
 func GetUsersCollection(dbName string) *mongo.Collection {
 	usersCollectionName := os.Getenv("MONGODB_USER_COLLECTION")
 	if usersCollectionName == "" {
-		usersCollectionName = "users" // fallback padrão
+		usersCollectionName = "users"
 	}
 	return GetCollection(dbName, usersCollectionName)
 }

@@ -2,7 +2,7 @@ name: Deploy to Azure Container Apps
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [ master, main, feature/* ]
 
 env:
   AZURE_CONTAINER_REGISTRY: jboardregistry
@@ -10,9 +10,11 @@ env:
   RESOURCE_GROUP: jboard-microservices
   CONTAINER_APP_ENVIRONMENT: jboard-environment
   IMAGE_NAME: jboard-go-crud
+  TARGET_PORT: 8080
+  MONGODB_RESOURCE_NAME: jboard-mongodb
 
 jobs:
-  build-and-deploy:
+  test-and-setup:
     runs-on: ubuntu-latest
 
     steps:
@@ -38,6 +40,15 @@ jobs:
     - name: Run tests
       run: go test -v ./...
 
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    needs: test-and-setup
+    if: ${{ success() }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
       with:
@@ -47,6 +58,32 @@ jobs:
       uses: azure/login@v2
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Get MongoDB Connection String
+      id: mongodb-uri
+      run: |
+        MONGODB_CONNECTION=$(az cosmosdb keys list \
+          --name ${{ env.MONGODB_RESOURCE_NAME }} \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --type connection-strings \
+          --query "connectionStrings[0].connectionString" \
+          --output tsv)
+        
+        echo "Raw MongoDB connection result length: ${#MONGODB_CONNECTION}"
+        
+        if [ -z "$MONGODB_CONNECTION" ] || [ "$MONGODB_CONNECTION" = "null" ]; then
+          echo "Cannot deploy without a valid MongoDB connection string"
+          exit 1
+        else
+          # Add w=0 parameter to the connection string
+          if [[ "$MONGODB_CONNECTION" == *"?"* ]]; then
+            MONGODB_URI="${MONGODB_CONNECTION}&w=0"
+          else
+            MONGODB_URI="${MONGODB_CONNECTION}?w=0"
+          fi
+          echo "mongodb-uri=$MONGODB_URI" >> $GITHUB_OUTPUT
+          echo "✅ MongoDB connection string retrieved and configured with w=0"
+        fi
 
     - name: Log in to Azure Container Registry
       uses: azure/docker-login@v1
@@ -66,36 +103,47 @@ jobs:
         platforms: linux/amd64
 
     - name: Deploy to Azure Container Apps
+      id: deploy
+      uses: azure/container-apps-deploy-action@v1
+      with:
+        containerAppName: ${{ env.CONTAINER_APP_NAME }}
+        resourceGroup: ${{ env.RESOURCE_GROUP }}
+        imageToDeploy: ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        containerAppEnvironment: ${{ env.CONTAINER_APP_ENVIRONMENT }}
+        targetPort: ${{ env.TARGET_PORT }}
+        ingress: internal
+        registryUrl: ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io
+        registryUsername: ${{ secrets.ACR_USERNAME }}
+        registryPassword: ${{ secrets.ACR_PASSWORD }}
+        environmentVariables: >
+          MONGODB_URI=${{ steps.mongodb-uri.outputs.mongodb-uri }}
+          MONGODB_DATABASE_NAME=${{ secrets.MONGODB_DATABASE_NAME }}
+          MONGODB_JOB_COLLECTION=${{ secrets.MONGODB_JOB_COLLECTION }}
+
+    - name: Deployment Summary
+      if: always()
       run: |
-        # Check if container app exists
-        if az containerapp show --name ${{ env.CONTAINER_APP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} &>/dev/null; then
-          echo "Container App exists, updating..."
-          az containerapp update \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --image ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            --set-env-vars \
-              MONGODB_URI="${{ secrets.MONGODB_URI }}" \
-              MONGODB_DATABASE_NAME="${{ secrets.MONGODB_DATABASE_NAME }}" \
-              MONGODB_JOB_COLLECTION="${{ secrets.MONGODB_JOB_COLLECTION }}"
+        if [ "${{ job.status }}" = "success" ]; then
+          echo "# ✅ Deployment Successful" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Your Go CRUD application is ready!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📋 **Info:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Service: Internal access only (microservice backend)" >> $GITHUB_STEP_SUMMARY
+          echo "- Database: MongoDB (CosmosDB)" >> $GITHUB_STEP_SUMMARY
+          echo "- Version: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
         else
-          echo "Container App does not exist, creating..."
-          az containerapp create \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --environment ${{ env.CONTAINER_APP_ENVIRONMENT }} \
-            --image ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            --target-port 8080 \
-            --ingress internal \
-            --env-vars \
-              MONGODB_URI="${{ secrets.MONGODB_URI }}" \
-              MONGODB_DATABASE_NAME="${{ secrets.MONGODB_DATABASE_NAME }}" \
-              MONGODB_JOB_COLLECTION="${{ secrets.MONGODB_JOB_COLLECTION }}" \
-            --registry-server ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io \
-            --registry-username ${{ secrets.ACR_USERNAME }} \
-            --registry-password ${{ secrets.ACR_PASSWORD }} \
-            --cpu 0.25 \
-            --memory 0.5Gi \
-            --min-replicas 1 \
-            --max-replicas 3
+          echo "# ❌ Deployment Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Check which step failed
+          if [ "${{ needs.test-and-setup.result }}" != "success" ]; then
+            echo "🧪 **Tests Failed** - Check Go test failures" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ steps.mongodb-uri.outcome }}" != "success" ]; then
+            echo "🗄️ **MongoDB Connection Failed** - Check CosmosDB '${{ env.MONGODB_RESOURCE_NAME }}'" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ steps.deploy.outcome }}" != "success" ]; then
+            echo "🚀 **Deployment Failed** - Check Azure credentials and configuration" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "🔧 **Build Failed** - Check Docker build logs" >> $GITHUB_STEP_SUMMARY
+          fi
         fi
