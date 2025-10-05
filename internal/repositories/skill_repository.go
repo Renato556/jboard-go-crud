@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"jboard-go-crud/internal/config"
 	"jboard-go-crud/internal/models"
 	"log"
 	"strings"
@@ -28,22 +29,22 @@ type mongoSkillRepository struct {
 }
 
 func NewSkillRepository(client *mongo.Client, dbName, collectionName string) SkillRepository {
-	log.Printf("Creating new SkillRepository with database: %s, collection: %s", dbName, collectionName)
+	log.Printf("Creating new SkillRepository with database: %s, getCollection: %s", dbName, collectionName)
 	return &mongoSkillRepository{
 		database: dbName,
 		client:   client,
 	}
 }
 
-func (r *mongoSkillRepository) collection() *mongo.Collection {
-	return r.client.Database(r.database).Collection("skills")
+func (r *mongoSkillRepository) getCollection() *mongo.Collection {
+	return config.GetSkillsCollection(r.database)
 }
 
 func (r *mongoSkillRepository) FindAll(ctx context.Context) ([]models.Skill, error) {
 	log.Printf("Repository FindAll called for skills")
 
 	var skills []models.Skill
-	cursor, err := r.collection().Find(ctx, bson.M{})
+	cursor, err := r.getCollection().Find(ctx, bson.M{})
 	if err != nil {
 		log.Printf("ERROR: Failed to execute find query for skills: %v", err)
 		return nil, err
@@ -68,7 +69,7 @@ func (r *mongoSkillRepository) FindByUsername(ctx context.Context, username stri
 
 	var skill models.Skill
 	filter := bson.M{"username": username}
-	err := r.collection().FindOne(ctx, filter).Decode(&skill)
+	err := r.getCollection().FindOne(ctx, filter).Decode(&skill)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			log.Printf("Skills not found for username: %s", username)
@@ -95,7 +96,7 @@ func (r *mongoSkillRepository) Create(ctx context.Context, skillRequest models.S
 		Username: skillRequest.Username,
 		Skills:   []string{skillRequest.Skill},
 	}
-	_, err := r.collection().InsertOne(ctx, skill)
+	_, err := r.getCollection().InsertOne(ctx, skill)
 	if err != nil {
 		if strings.Contains(err.Error(), "unacknowledged write") {
 			log.Printf("Unacknowledged write for skill user %s - treating as success since data was written to database", skillRequest.Username)
@@ -116,7 +117,7 @@ func (r *mongoSkillRepository) AddSkill(ctx context.Context, skillRequest models
 	update := bson.M{
 		"$addToSet": bson.M{"skills": skillRequest.Skill},
 	}
-	result, err := r.collection().UpdateOne(ctx, filter, update)
+	result, err := r.getCollection().UpdateOne(ctx, filter, update)
 	if err != nil {
 		if strings.Contains(err.Error(), "unacknowledged write") {
 			log.Printf("Unacknowledged write for adding skill to user %s - treating as success since data was written to database", skillRequest.Username)
@@ -137,7 +138,7 @@ func (r *mongoSkillRepository) RemoveSkill(ctx context.Context, skillRequest mod
 	update := bson.M{
 		"$pull": bson.M{"skills": skillRequest.Skill},
 	}
-	result, err := r.collection().UpdateOne(ctx, filter, update)
+	result, err := r.getCollection().UpdateOne(ctx, filter, update)
 	if err != nil {
 		if strings.Contains(err.Error(), "unacknowledged write") {
 			log.Printf("Unacknowledged write for removing skill from user %s - treating as success since data was written to database", skillRequest.Username)
@@ -155,7 +156,7 @@ func (r *mongoSkillRepository) DeleteByUsername(ctx context.Context, username st
 	log.Printf("Repository DeleteByUsername called for username: %s", username)
 
 	filter := bson.M{"username": username}
-	result, err := r.collection().DeleteOne(ctx, filter)
+	result, err := r.getCollection().DeleteOne(ctx, filter)
 	if err != nil {
 		if strings.Contains(err.Error(), "unacknowledged write") {
 			log.Printf("Unacknowledged write for deleting skills of user %s - treating as success since data was written to database", username)
