@@ -30,7 +30,6 @@ func (h *JobHandler) CreateJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Log apenas campos críticos para debugging
 	log.Printf("Job payload: ID='%s', Title='%s', Field='%s'", job.ID, job.Title, job.Field)
 
 	outcome, err := h.svc.CreateOrUpdate(r.Context(), job)
