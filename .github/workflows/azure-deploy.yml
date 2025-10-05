@@ -118,8 +118,6 @@ jobs:
         environmentVariables: >
           MONGODB_URI=${{ steps.mongodb-uri.outputs.mongodb-uri }}
           MONGODB_DATABASE_NAME=${{ secrets.MONGODB_DATABASE_NAME }}
-          MONGODB_JOB_COLLECTION=${{ secrets.MONGODB_JOB_COLLECTION }}
-
     - name: Deployment Summary
       if: always()
       run: |
