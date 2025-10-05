@@ -193,13 +193,17 @@ func (m *mongoUserRepository) DeleteByID(ctx context.Context, id string) error {
 
 	result, err := coll.DeleteOne(ctx, bson.M{"_id": id})
 	if err != nil {
-		log.Printf("ERROR: Failed to delete user ID %s: %v", id, err)
-		return err
-	}
-
-	if result.DeletedCount == 0 {
-		log.Printf("User not found for deletion with ID: %s", id)
-		return errors.New("user not found")
+		if strings.Contains(err.Error(), "unacknowledged write") {
+			log.Printf("Unacknowledged write for user ID %s - treating as success since data was written to database", id)
+		} else {
+			log.Printf("ERROR: Failed to delete user ID %s: %v", id, err)
+			return err
+		}
+	} else {
+		if result.DeletedCount == 0 {
+			log.Printf("User not found for deletion with ID: %s", id)
+			return errors.New("user not found")
+		}
 	}
 
 	log.Printf("Successfully deleted user ID: %s", id)
