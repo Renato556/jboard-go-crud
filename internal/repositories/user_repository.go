@@ -28,7 +28,7 @@ type mongoUserRepository struct {
 }
 
 func NewUserRepository(client *mongo.Client, dbName, collectionName string) UserRepository {
-	log.Printf("Creating new UserRepository with database: %s, collection: %s", dbName, collectionName)
+	log.Printf("Creating new UserRepository with database: %s, getCollection: %s", dbName, collectionName)
 	repo := &mongoUserRepository{
 		database: dbName,
 	}
@@ -50,8 +50,8 @@ func (m *mongoUserRepository) ensureIndexes(ctx context.Context) error {
 
 	coll := m.getCollection()
 	if coll == nil {
-		log.Printf("ERROR: Failed to get users collection when ensuring indexes")
-		return errors.New("failed to get users collection")
+		log.Printf("ERROR: Failed to get users getCollection when ensuring indexes")
+		return errors.New("failed to get users getCollection")
 	}
 
 	indexModel := mongo.IndexModel{
@@ -78,8 +78,8 @@ func (m *mongoUserRepository) Create(ctx context.Context, user models.User) erro
 
 	coll := m.getCollection()
 	if coll == nil {
-		log.Printf("ERROR: Failed to get users collection in Create")
-		return errors.New("failed to get users collection")
+		log.Printf("ERROR: Failed to get users getCollection in Create")
+		return errors.New("failed to get users getCollection")
 	}
 
 	_, err := coll.InsertOne(ctx, user)
@@ -105,8 +105,8 @@ func (m *mongoUserRepository) FindByID(ctx context.Context, id string) (models.U
 
 	coll := m.getCollection()
 	if coll == nil {
-		log.Printf("ERROR: Failed to get users collection in FindByID")
-		return models.User{}, false, errors.New("failed to get users collection")
+		log.Printf("ERROR: Failed to get users getCollection in FindByID")
+		return models.User{}, false, errors.New("failed to get users getCollection")
 	}
 
 	var result models.User
@@ -129,8 +129,8 @@ func (m *mongoUserRepository) FindByUsername(ctx context.Context, username strin
 
 	coll := m.getCollection()
 	if coll == nil {
-		log.Printf("ERROR: Failed to get users collection in FindByUsername")
-		return models.User{}, false, errors.New("failed to get users collection")
+		log.Printf("ERROR: Failed to get users getCollection in FindByUsername")
+		return models.User{}, false, errors.New("failed to get users getCollection")
 	}
 
 	var result models.User
@@ -159,8 +159,8 @@ func (m *mongoUserRepository) UpdateByID(ctx context.Context, id string, user mo
 
 	coll := m.getCollection()
 	if coll == nil {
-		log.Printf("ERROR: Failed to get users collection in UpdateByID")
-		return errors.New("failed to get users collection")
+		log.Printf("ERROR: Failed to get users getCollection in UpdateByID")
+		return errors.New("failed to get users getCollection")
 	}
 
 	result, err := coll.ReplaceOne(ctx, bson.M{"_id": id}, user)
@@ -187,8 +187,8 @@ func (m *mongoUserRepository) DeleteByID(ctx context.Context, id string) error {
 
 	coll := m.getCollection()
 	if coll == nil {
-		log.Printf("ERROR: Failed to get users collection in DeleteByID")
-		return errors.New("failed to get users collection")
+		log.Printf("ERROR: Failed to get users getCollection in DeleteByID")
+		return errors.New("failed to get users getCollection")
 	}
 
 	result, err := coll.DeleteOne(ctx, bson.M{"_id": id})

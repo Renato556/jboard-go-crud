@@ -91,3 +91,11 @@ func GetUsersCollection(dbName string) *mongo.Collection {
 	}
 	return GetCollection(dbName, usersCollectionName)
 }
+
+func GetSkillsCollection(dbName string) *mongo.Collection {
+	skillsCollectionName := os.Getenv("MONGODB_SKILL_COLLECTION")
+	if skillsCollectionName == "" {
+		skillsCollectionName = "skills"
+	}
+	return GetCollection(dbName, skillsCollectionName)
+}

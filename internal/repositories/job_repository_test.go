@@ -61,8 +61,8 @@ func TestJobRepository_Create_Success(t *testing.T) {
 		t.Error("Expected error due to nil MongoDB client, got nil")
 	}
 
-	if err.Error() != "failed to get jobs collection" {
-		t.Errorf("Expected 'failed to get jobs collection' error, got %v", err)
+	if err.Error() != "failed to get jobs getCollection" {
+		t.Errorf("Expected 'failed to get jobs getCollection' error, got %v", err)
 	}
 }
 
@@ -136,8 +136,8 @@ func TestJobRepository_FindByID_Success(t *testing.T) {
 		t.Errorf("Expected empty job, got job with ID: %s", job.ID)
 	}
 
-	if err.Error() != "failed to get jobs collection" {
-		t.Errorf("Expected 'failed to get jobs collection' error, got %v", err)
+	if err.Error() != "failed to get jobs getCollection" {
+		t.Errorf("Expected 'failed to get jobs getCollection' error, got %v", err)
 	}
 }
 
@@ -158,8 +158,8 @@ func TestJobRepository_FindByID_EmptyID(t *testing.T) {
 		t.Errorf("Expected empty job, got job with ID: %s", job.ID)
 	}
 
-	if err.Error() != "failed to get jobs collection" {
-		t.Errorf("Expected 'failed to get jobs collection' error, got %v", err)
+	if err.Error() != "failed to get jobs getCollection" {
+		t.Errorf("Expected 'failed to get jobs getCollection' error, got %v", err)
 	}
 }
 
@@ -181,8 +181,8 @@ func TestJobRepository_UpdateByID_Success(t *testing.T) {
 		t.Error("Expected error due to nil MongoDB client, got nil")
 	}
 
-	if err.Error() != "failed to get jobs collection" {
-		t.Errorf("Expected 'failed to get jobs collection' error, got %v", err)
+	if err.Error() != "failed to get jobs getCollection" {
+		t.Errorf("Expected 'failed to get jobs getCollection' error, got %v", err)
 	}
 }
 
@@ -221,8 +221,8 @@ func TestJobRepository_UpdateByID_EmptyID(t *testing.T) {
 		t.Error("Expected error due to nil MongoDB client, got nil")
 	}
 
-	if err.Error() != "failed to get jobs collection" {
-		t.Errorf("Expected 'failed to get jobs collection' error, got %v", err)
+	if err.Error() != "failed to get jobs getCollection" {
+		t.Errorf("Expected 'failed to get jobs getCollection' error, got %v", err)
 	}
 }
 
@@ -256,8 +256,8 @@ func TestJobRepository_FindAll_Success(t *testing.T) {
 		t.Errorf("Expected nil jobs slice, got %v", jobs)
 	}
 
-	if err.Error() != "failed to get jobs collection" {
-		t.Errorf("Expected 'failed to get jobs collection' error, got %v", err)
+	if err.Error() != "failed to get jobs getCollection" {
+		t.Errorf("Expected 'failed to get jobs getCollection' error, got %v", err)
 	}
 }
 
@@ -280,8 +280,8 @@ func TestJobRepository_ExpiresAtFieldSetOnCreate(t *testing.T) {
 		t.Error("Expected error due to nil MongoDB client, got nil")
 	}
 
-	if err.Error() != "failed to get jobs collection" {
-		t.Errorf("Expected 'failed to get jobs collection' error, got %v", err)
+	if err.Error() != "failed to get jobs getCollection" {
+		t.Errorf("Expected 'failed to get jobs getCollection' error, got %v", err)
 	}
 }
 
@@ -304,8 +304,8 @@ func TestJobRepository_ExpiresAtFieldSetOnUpdate(t *testing.T) {
 		t.Error("Expected error due to nil MongoDB client, got nil")
 	}
 
-	if err.Error() != "failed to get jobs collection" {
-		t.Errorf("Expected 'failed to get jobs collection' error, got %v", err)
+	if err.Error() != "failed to get jobs getCollection" {
+		t.Errorf("Expected 'failed to get jobs getCollection' error, got %v", err)
 	}
 }
 

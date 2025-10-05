@@ -29,7 +29,7 @@ type mongoJobRepository struct {
 }
 
 func NewJobRepository(client *mongo.Client, dbName, collectionName string) JobRepository {
-	log.Printf("Creating new JobRepository with database: %s, collection: %s", dbName, collectionName)
+	log.Printf("Creating new JobRepository with database: %s, getCollection: %s", dbName, collectionName)
 	repo := &mongoJobRepository{
 		database: dbName,
 	}
@@ -51,8 +51,8 @@ func (m *mongoJobRepository) ensureIndexes(ctx context.Context) error {
 
 	coll := m.getCollection()
 	if coll == nil {
-		log.Printf("ERROR: Failed to get jobs collection when ensuring indexes")
-		return errors.New("failed to get jobs collection")
+		log.Printf("ERROR: Failed to get jobs getCollection when ensuring indexes")
+		return errors.New("failed to get jobs getCollection")
 	}
 
 	ttlModel := mongo.IndexModel{
@@ -83,8 +83,8 @@ func (m *mongoJobRepository) Create(ctx context.Context, job models.Job) error {
 
 	coll := m.getCollection()
 	if coll == nil {
-		log.Printf("ERROR: Failed to get jobs collection in Create")
-		return errors.New("failed to get jobs collection")
+		log.Printf("ERROR: Failed to get jobs getCollection in Create")
+		return errors.New("failed to get jobs getCollection")
 	}
 
 	_, err := coll.InsertOne(ctx, job)
@@ -106,8 +106,8 @@ func (m *mongoJobRepository) FindByID(ctx context.Context, id string) (models.Jo
 
 	coll := m.getCollection()
 	if coll == nil {
-		log.Printf("ERROR: Failed to get jobs collection in FindByID")
-		return models.Job{}, false, errors.New("failed to get jobs collection")
+		log.Printf("ERROR: Failed to get jobs getCollection in FindByID")
+		return models.Job{}, false, errors.New("failed to get jobs getCollection")
 	}
 
 	var result models.Job
@@ -139,8 +139,8 @@ func (m *mongoJobRepository) UpdateByID(ctx context.Context, id string, job mode
 
 	coll := m.getCollection()
 	if coll == nil {
-		log.Printf("ERROR: Failed to get jobs collection in UpdateByID")
-		return errors.New("failed to get jobs collection")
+		log.Printf("ERROR: Failed to get jobs getCollection in UpdateByID")
+		return errors.New("failed to get jobs getCollection")
 	}
 
 	result, err := coll.ReplaceOne(ctx, bson.M{"_id": id}, job)
@@ -163,8 +163,8 @@ func (m *mongoJobRepository) FindAll(ctx context.Context) ([]models.Job, error) 
 
 	coll := m.getCollection()
 	if coll == nil {
-		log.Printf("ERROR: Failed to get jobs collection in FindAll")
-		return nil, errors.New("failed to get jobs collection")
+		log.Printf("ERROR: Failed to get jobs getCollection in FindAll")
+		return nil, errors.New("failed to get jobs getCollection")
 	}
 
 	cursor, err := coll.Find(ctx, bson.M{})

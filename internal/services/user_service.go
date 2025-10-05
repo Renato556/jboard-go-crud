@@ -2,8 +2,6 @@ package services
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"jboard-go-crud/internal/models"
 	"jboard-go-crud/internal/models/enums"
@@ -31,15 +29,6 @@ func NewUserService(userRepo repositories.UserRepository) UserService {
 	}
 }
 
-func (s *userService) generateID() string {
-	bytes := make([]byte, 16)
-	if _, err := rand.Read(bytes); err != nil {
-		log.Printf("Error generating random ID: %v", err)
-		return ""
-	}
-	return hex.EncodeToString(bytes)
-}
-
 func (s *userService) CreateUser(ctx context.Context, username, password string, role enums.RoleEnum) error {
 	log.Printf("Service CreateUser called for username: %s", username)
 
@@ -64,7 +53,6 @@ func (s *userService) CreateUser(ctx context.Context, username, password string,
 	}
 
 	user := models.User{
-		ID:       s.generateID(),
 		Username: username,
 		Password: password,
 		Role:     role,
@@ -75,7 +63,6 @@ func (s *userService) CreateUser(ctx context.Context, username, password string,
 		return err
 	}
 
-	user.Password = ""
 	log.Printf("Successfully created user: %s", username)
 	return nil
 }

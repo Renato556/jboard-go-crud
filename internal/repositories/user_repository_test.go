@@ -42,8 +42,8 @@ func TestUserRepository_Create_Success(t *testing.T) {
 		t.Error("Expected error due to nil MongoDB client, got nil")
 	}
 
-	if err.Error() != "failed to get users collection" {
-		t.Errorf("Expected 'failed to get users collection' error, got %v", err)
+	if err.Error() != "failed to get users getCollection" {
+		t.Errorf("Expected 'failed to get users getCollection' error, got %v", err)
 	}
 }
 
@@ -81,8 +81,8 @@ func TestUserRepository_FindByID_Success(t *testing.T) {
 		t.Errorf("Expected empty user, got user with ID: %s", user.ID)
 	}
 
-	if err.Error() != "failed to get users collection" {
-		t.Errorf("Expected 'failed to get users collection' error, got %v", err)
+	if err.Error() != "failed to get users getCollection" {
+		t.Errorf("Expected 'failed to get users getCollection' error, got %v", err)
 	}
 }
 
@@ -121,8 +121,8 @@ func TestUserRepository_FindByUsername_Success(t *testing.T) {
 		t.Errorf("Expected empty user, got user with username: %s", user.Username)
 	}
 
-	if err.Error() != "failed to get users collection" {
-		t.Errorf("Expected 'failed to get users collection' error, got %v", err)
+	if err.Error() != "failed to get users getCollection" {
+		t.Errorf("Expected 'failed to get users getCollection' error, got %v", err)
 	}
 }
 
@@ -160,8 +160,8 @@ func TestUserRepository_UpdateByID_Success(t *testing.T) {
 		t.Error("Expected error due to nil MongoDB client, got nil")
 	}
 
-	if err.Error() != "failed to get users collection" {
-		t.Errorf("Expected 'failed to get users collection' error, got %v", err)
+	if err.Error() != "failed to get users getCollection" {
+		t.Errorf("Expected 'failed to get users getCollection' error, got %v", err)
 	}
 }
 
@@ -198,8 +198,8 @@ func TestUserRepository_UpdateByID_EmptyID(t *testing.T) {
 		t.Error("Expected error due to nil MongoDB client, got nil")
 	}
 
-	if err.Error() != "failed to get users collection" {
-		t.Errorf("Expected 'failed to get users collection' error, got %v", err)
+	if err.Error() != "failed to get users getCollection" {
+		t.Errorf("Expected 'failed to get users getCollection' error, got %v", err)
 	}
 }
 
@@ -212,8 +212,8 @@ func TestUserRepository_DeleteByID_Success(t *testing.T) {
 		t.Error("Expected error due to nil MongoDB client, got nil")
 	}
 
-	if err.Error() != "failed to get users collection" {
-		t.Errorf("Expected 'failed to get users collection' error, got %v", err)
+	if err.Error() != "failed to get users getCollection" {
+		t.Errorf("Expected 'failed to get users getCollection' error, got %v", err)
 	}
 }
 
@@ -226,8 +226,8 @@ func TestUserRepository_DeleteByID_EmptyID(t *testing.T) {
 		t.Error("Expected error due to nil MongoDB client, got nil")
 	}
 
-	if err.Error() != "failed to get users collection" {
-		t.Errorf("Expected 'failed to get users collection' error, got %v", err)
+	if err.Error() != "failed to get users getCollection" {
+		t.Errorf("Expected 'failed to get users getCollection' error, got %v", err)
 	}
 }
 
@@ -377,8 +377,8 @@ func TestUserRepository_DeleteByID_NonExistentUser(t *testing.T) {
 		t.Error("Expected error due to nil MongoDB client, got nil")
 	}
 
-	if err.Error() != "failed to get users collection" {
-		t.Errorf("Expected 'failed to get users collection' error, got %v", err)
+	if err.Error() != "failed to get users getCollection" {
+		t.Errorf("Expected 'failed to get users getCollection' error, got %v", err)
 	}
 }
 
@@ -398,8 +398,8 @@ func TestUserRepository_UpdateByID_NonExistentUser(t *testing.T) {
 		t.Error("Expected error due to nil MongoDB client, got nil")
 	}
 
-	if err.Error() != "failed to get users collection" {
-		t.Errorf("Expected 'failed to get users collection' error, got %v", err)
+	if err.Error() != "failed to get users getCollection" {
+		t.Errorf("Expected 'failed to get users getCollection' error, got %v", err)
 	}
 }
 
