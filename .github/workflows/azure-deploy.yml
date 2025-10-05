@@ -104,20 +104,15 @@ jobs:
 
     - name: Deploy to Azure Container Apps
       id: deploy
-      uses: azure/container-apps-deploy-action@v1
-      with:
-        containerAppName: ${{ env.CONTAINER_APP_NAME }}
-        resourceGroup: ${{ env.RESOURCE_GROUP }}
-        imageToDeploy: ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
-        containerAppEnvironment: ${{ env.CONTAINER_APP_ENVIRONMENT }}
-        targetPort: ${{ env.TARGET_PORT }}
-        ingress: internal
-        registryUrl: ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io
-        registryUsername: ${{ secrets.ACR_USERNAME }}
-        registryPassword: ${{ secrets.ACR_PASSWORD }}
-        environmentVariables: >
-          MONGODB_URI=${{ steps.mongodb-uri.outputs.mongodb-uri }}
-          MONGODB_DATABASE_NAME=${{ secrets.MONGODB_DATABASE_NAME }}
+      run: |
+        az containerapp update \
+          --name ${{ env.CONTAINER_APP_NAME }} \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --image ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+          --set-env-vars \
+            MONGODB_URI="${{ steps.mongodb-uri.outputs.mongodb-uri }}" \
+            MONGODB_DATABASE_NAME="${{ secrets.MONGODB_DATABASE_NAME }}" \
+
     - name: Deployment Summary
       if: always()
       run: |
