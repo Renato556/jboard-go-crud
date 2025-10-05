@@ -2,15 +2,13 @@ name: Deploy to Azure Container Apps
 
 on:
   push:
-    branches: [ master, main, feature/* ]
+    branches: [ master, main ]
 
 env:
   AZURE_CONTAINER_REGISTRY: jboardregistry
   CONTAINER_APP_NAME: jboard-go-crud
   RESOURCE_GROUP: jboard-microservices
-  CONTAINER_APP_ENVIRONMENT: jboard-environment
   IMAGE_NAME: jboard-go-crud
-  TARGET_PORT: 8080
   MONGODB_RESOURCE_NAME: jboard-mongodb
 
 jobs:
