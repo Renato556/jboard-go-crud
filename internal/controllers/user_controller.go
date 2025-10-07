@@ -190,6 +190,11 @@ func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Handler DeleteUser called")
 
 	username := r.URL.Query().Get("username")
+	if username == "" {
+		log.Printf("Username query parameter is missing")
+		http.Error(w, "Username query parameter is required", http.StatusBadRequest)
+		return
+	}
 
 	err := h.userService.DeleteUser(r.Context(), username)
 	if err != nil {

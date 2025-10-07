@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type mockUserService struct{}
@@ -17,15 +19,18 @@ func (m *mockUserService) CreateUser(_ context.Context, _, _ string, _ enums.Rol
 }
 
 func (m *mockUserService) GetUserByID(_ context.Context, _ string) (models.User, error) {
-	return models.User{ID: "test-id", Username: "testuser", Role: enums.Free}, nil
+	testID, _ := primitive.ObjectIDFromHex("68e462f868efefe99e226a8b")
+	return models.User{ID: testID, Username: "testuser", Role: enums.Free}, nil
 }
 
 func (m *mockUserService) GetUserByUsername(_ context.Context, _ string) (models.User, error) {
-	return models.User{ID: "test-id", Username: "testuser", Role: enums.Free}, nil
+	testID, _ := primitive.ObjectIDFromHex("68e462f868efefe99e226a8b")
+	return models.User{ID: testID, Username: "testuser", Role: enums.Free}, nil
 }
 
 func (m *mockUserService) UpdateUser(_ context.Context, _, _ string, _ enums.RoleEnum) (models.User, error) {
-	return models.User{ID: "test-id", Username: "testuser", Role: enums.Premium}, nil
+	testID, _ := primitive.ObjectIDFromHex("68e462f868efefe99e226a8b")
+	return models.User{ID: testID, Username: "testuser", Role: enums.Premium}, nil
 }
 
 func (m *mockUserService) DeleteUser(_ context.Context, _ string) error {

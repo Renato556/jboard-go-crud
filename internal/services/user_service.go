@@ -143,12 +143,14 @@ func (s *userService) UpdateUser(ctx context.Context, username string, password 
 		updatedUser.Password = existingUser.Password
 	}
 
-	if err := s.userRepo.UpdateByID(ctx, existingUser.ID, updatedUser); err != nil {
+	idString := existingUser.ID.Hex()
+	if err := s.userRepo.UpdateByID(ctx, idString, updatedUser); err != nil {
 		log.Printf("Repository error in UpdateUser: %v", err)
 		return models.User{}, err
 	}
 
 	updatedUser.Password = ""
+
 	log.Printf("Successfully updated user: %s", username)
 	return updatedUser, nil
 }
@@ -166,11 +168,12 @@ func (s *userService) DeleteUser(ctx context.Context, username string) error {
 		return err
 	}
 	if !found {
-		log.Printf("User not found for update with Username: %s", username)
+		log.Printf("User not found for delete with Username: %s", username)
 		return errors.New("user not found")
 	}
 
-	if err := s.userRepo.DeleteByID(ctx, existingUser.ID); err != nil {
+	idString := existingUser.ID.Hex()
+	if err := s.userRepo.DeleteByID(ctx, idString); err != nil {
 		log.Printf("Repository error in DeleteUser: %v", err)
 		return err
 	}
