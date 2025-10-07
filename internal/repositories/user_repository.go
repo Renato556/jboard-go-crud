@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -103,6 +104,12 @@ func (m *mongoUserRepository) Create(ctx context.Context, user models.User) erro
 func (m *mongoUserRepository) FindByID(ctx context.Context, id string) (models.User, bool, error) {
 	log.Printf("Repository FindByID called for ID: %s", id)
 
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		log.Printf("ERROR: Invalid ObjectID format for ID %s: %v", id, err)
+		return models.User{}, false, errors.New("invalid ID format")
+	}
+
 	coll := m.getCollection()
 	if coll == nil {
 		log.Printf("ERROR: Failed to get users getCollection in FindByID")
@@ -110,7 +117,7 @@ func (m *mongoUserRepository) FindByID(ctx context.Context, id string) (models.U
 	}
 
 	var result models.User
-	err := coll.FindOne(ctx, bson.M{"_id": id}).Decode(&result)
+	err = coll.FindOne(ctx, bson.M{"_id": objectID}).Decode(&result)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			log.Printf("User not found for ID: %s", id)
@@ -151,6 +158,13 @@ func (m *mongoUserRepository) FindByUsername(ctx context.Context, username strin
 func (m *mongoUserRepository) UpdateByID(ctx context.Context, id string, user models.User) error {
 	log.Printf("Repository UpdateByID called for user ID: %s", id)
 
+	// Validate ID format first, before checking collection
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		log.Printf("ERROR: Invalid ObjectID format for ID %s: %v", id, err)
+		return errors.New("invalid ID format")
+	}
+
 	if err := userValidate.Struct(user); err != nil {
 		log.Printf("Validation error in UpdateByID for user ID %s: %v", id, err)
 		return err
@@ -163,7 +177,10 @@ func (m *mongoUserRepository) UpdateByID(ctx context.Context, id string, user mo
 		return errors.New("failed to get users getCollection")
 	}
 
-	result, err := coll.ReplaceOne(ctx, bson.M{"_id": id}, user)
+	// Ensure the user model has the correct ID
+	user.ID = objectID
+
+	result, err := coll.ReplaceOne(ctx, bson.M{"_id": objectID}, user)
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key") {
 			log.Printf("ERROR: Username already exists when updating user: %s", user.Username)
@@ -185,13 +202,20 @@ func (m *mongoUserRepository) UpdateByID(ctx context.Context, id string, user mo
 func (m *mongoUserRepository) DeleteByID(ctx context.Context, id string) error {
 	log.Printf("Repository DeleteByID called for user ID: %s", id)
 
+	// Validate ID format first, before checking collection
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		log.Printf("ERROR: Invalid ObjectID format for ID %s: %v", id, err)
+		return errors.New("invalid ID format")
+	}
+
 	coll := m.getCollection()
 	if coll == nil {
 		log.Printf("ERROR: Failed to get users getCollection in DeleteByID")
 		return errors.New("failed to get users getCollection")
 	}
 
-	result, err := coll.DeleteOne(ctx, bson.M{"_id": id})
+	result, err := coll.DeleteOne(ctx, bson.M{"_id": objectID})
 	if err != nil {
 		if strings.Contains(err.Error(), "unacknowledged write") {
 			log.Printf("Unacknowledged write for user ID %s - treating as success since data was written to database", id)
@@ -200,12 +224,8 @@ func (m *mongoUserRepository) DeleteByID(ctx context.Context, id string) error {
 			return err
 		}
 	} else {
-		if result.DeletedCount == 0 {
-			log.Printf("User not found for deletion with ID: %s", id)
-			return errors.New("user not found")
-		}
+		log.Printf("Successfully deleted user ID: %s, deleted count: %d", id, result.DeletedCount)
 	}
 
-	log.Printf("Successfully deleted user ID: %s", id)
 	return nil
 }

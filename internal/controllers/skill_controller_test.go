@@ -12,6 +12,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type MockSkillService struct {
@@ -42,8 +43,9 @@ func TestSkillHandler_GetAllSkills_Success(t *testing.T) {
 	mockService := new(MockSkillService)
 	handler := NewSkillHandler(mockService)
 
+	testID := primitive.NewObjectID()
 	expectedSkill := models.Skill{
-		ID:       "1",
+		ID:       testID,
 		Username: "testuser",
 		Skills:   []string{"java", "python"},
 	}
@@ -173,4 +175,187 @@ func TestSkillHandler_DeleteUserSkills_MissingUsername(t *testing.T) {
 	handler.DeleteUserSkills(rr, req)
 
 	assert.Equal(t, http.StatusBadRequest, rr.Code)
+}
+
+func TestSkillHandler_DeleteUserSkills_UserNotFound(t *testing.T) {
+	mockService := new(MockSkillService)
+	handler := NewSkillHandler(mockService)
+
+	mockService.On("DeleteUserSkills", mock.Anything, "nonexistent").Return(errors.New("user not found"))
+
+	req, _ := http.NewRequest("DELETE", "/v1/skills?username=nonexistent", nil)
+	rr := httptest.NewRecorder()
+
+	handler.DeleteUserSkills(rr, req)
+
+	assert.Equal(t, http.StatusNotFound, rr.Code)
+	mockService.AssertExpectations(t)
+}
+
+func TestSkillHandler_DeleteUserSkills_ValidationError(t *testing.T) {
+	mockService := new(MockSkillService)
+	handler := NewSkillHandler(mockService)
+
+	mockService.On("DeleteUserSkills", mock.Anything, "testuser").Return(errors.New("username is required"))
+
+	req, _ := http.NewRequest("DELETE", "/v1/skills?username=testuser", nil)
+	rr := httptest.NewRecorder()
+
+	handler.DeleteUserSkills(rr, req)
+
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+	mockService.AssertExpectations(t)
+}
+
+func TestSkillHandler_DeleteUserSkills_InternalError(t *testing.T) {
+	mockService := new(MockSkillService)
+	handler := NewSkillHandler(mockService)
+
+	mockService.On("DeleteUserSkills", mock.Anything, "testuser").Return(errors.New("database connection error"))
+
+	req, _ := http.NewRequest("DELETE", "/v1/skills?username=testuser", nil)
+	rr := httptest.NewRecorder()
+
+	handler.DeleteUserSkills(rr, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rr.Code)
+	mockService.AssertExpectations(t)
+}
+
+func TestSkillHandler_GetAllSkills_InternalError(t *testing.T) {
+	mockService := new(MockSkillService)
+	handler := NewSkillHandler(mockService)
+
+	mockService.On("GetAllSkills", mock.Anything, "testuser").Return(models.Skill{}, errors.New("database connection error"))
+
+	req, _ := http.NewRequest("GET", "/v1/skills?username=testuser", nil)
+	rr := httptest.NewRecorder()
+
+	handler.GetAllSkills(rr, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rr.Code)
+	mockService.AssertExpectations(t)
+}
+
+func TestSkillHandler_AddSkill_ValidationError(t *testing.T) {
+	mockService := new(MockSkillService)
+	handler := NewSkillHandler(mockService)
+
+	skillRequest := models.SkillRequest{
+		Username: "",
+		Skill:    "java",
+	}
+
+	mockService.On("AddSkill", mock.Anything, skillRequest).Return(errors.New("username is required"))
+
+	body, _ := json.Marshal(skillRequest)
+	req, _ := http.NewRequest("POST", "/v1/skills", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	handler.AddSkill(rr, req)
+
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+	mockService.AssertExpectations(t)
+}
+
+func TestSkillHandler_AddSkill_InternalError(t *testing.T) {
+	mockService := new(MockSkillService)
+	handler := NewSkillHandler(mockService)
+
+	skillRequest := models.SkillRequest{
+		Username: "testuser",
+		Skill:    "java",
+	}
+
+	mockService.On("AddSkill", mock.Anything, skillRequest).Return(errors.New("database connection error"))
+
+	body, _ := json.Marshal(skillRequest)
+	req, _ := http.NewRequest("POST", "/v1/skills", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	handler.AddSkill(rr, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rr.Code)
+	mockService.AssertExpectations(t)
+}
+
+func TestSkillHandler_RemoveSkill_InvalidJSON(t *testing.T) {
+	mockService := new(MockSkillService)
+	handler := NewSkillHandler(mockService)
+
+	req, _ := http.NewRequest("PUT", "/v1/skills", bytes.NewBuffer([]byte("invalid json")))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	handler.RemoveSkill(rr, req)
+
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+}
+
+func TestSkillHandler_RemoveSkill_ValidationError(t *testing.T) {
+	mockService := new(MockSkillService)
+	handler := NewSkillHandler(mockService)
+
+	skillRequest := models.SkillRequest{
+		Username: "",
+		Skill:    "java",
+	}
+
+	mockService.On("RemoveSkill", mock.Anything, skillRequest).Return(errors.New("username is required"))
+
+	body, _ := json.Marshal(skillRequest)
+	req, _ := http.NewRequest("PUT", "/v1/skills", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	handler.RemoveSkill(rr, req)
+
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+	mockService.AssertExpectations(t)
+}
+
+func TestSkillHandler_RemoveSkill_UserNotFound(t *testing.T) {
+	mockService := new(MockSkillService)
+	handler := NewSkillHandler(mockService)
+
+	skillRequest := models.SkillRequest{
+		Username: "nonexistent",
+		Skill:    "java",
+	}
+
+	mockService.On("RemoveSkill", mock.Anything, skillRequest).Return(errors.New("user not found"))
+
+	body, _ := json.Marshal(skillRequest)
+	req, _ := http.NewRequest("PUT", "/v1/skills", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	handler.RemoveSkill(rr, req)
+
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+	mockService.AssertExpectations(t)
+}
+
+func TestSkillHandler_RemoveSkill_InternalError(t *testing.T) {
+	mockService := new(MockSkillService)
+	handler := NewSkillHandler(mockService)
+
+	skillRequest := models.SkillRequest{
+		Username: "testuser",
+		Skill:    "java",
+	}
+
+	mockService.On("RemoveSkill", mock.Anything, skillRequest).Return(errors.New("database connection error"))
+
+	body, _ := json.Marshal(skillRequest)
+	req, _ := http.NewRequest("PUT", "/v1/skills", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	handler.RemoveSkill(rr, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rr.Code)
+	mockService.AssertExpectations(t)
 }

@@ -114,8 +114,11 @@ func (h *SkillHandler) DeleteUserSkills(w http.ResponseWriter, r *http.Request) 
 	log.Printf("Controller DeleteUserSkills processing request for username: %s", username)
 
 	if err := h.skillService.DeleteUserSkills(r.Context(), username); err != nil {
-		if strings.Contains(err.Error(), "required") || strings.Contains(err.Error(), "not found") {
-			log.Printf("Validation or not found error in DeleteUserSkills: %v", err)
+		if strings.Contains(err.Error(), "user not found") {
+			log.Printf("User not found error in DeleteUserSkills: %v", err)
+			http.Error(w, err.Error(), http.StatusNotFound)
+		} else if strings.Contains(err.Error(), "required") {
+			log.Printf("Validation error in DeleteUserSkills: %v", err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		} else {
 			log.Printf("ERROR: Service error in DeleteUserSkills for username %s: %v", username, err)

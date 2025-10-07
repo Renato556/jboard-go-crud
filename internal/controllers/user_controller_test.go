@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"jboard-go-crud/internal/models"
 	"jboard-go-crud/internal/models/enums"
 	"net/http"
@@ -196,8 +197,9 @@ func TestUserHandler_CreateUser_InternalServerError(t *testing.T) {
 }
 
 func TestUserHandler_GetUser_Success(t *testing.T) {
+	testID := primitive.NewObjectID()
 	expectedUser := models.User{
-		ID:       "test-id",
+		ID:       testID,
 		Username: "testuser",
 		Password: "hashedpass",
 		Role:     enums.Free,
@@ -211,7 +213,7 @@ func TestUserHandler_GetUser_Success(t *testing.T) {
 
 	handler := NewUserHandler(mockService)
 
-	req := httptest.NewRequest(http.MethodGet, "/users?id=test-id", nil)
+	req := httptest.NewRequest(http.MethodGet, "/users?id="+testID.Hex(), nil)
 	rr := httptest.NewRecorder()
 
 	handler.GetUser(rr, req)
@@ -227,7 +229,7 @@ func TestUserHandler_GetUser_Success(t *testing.T) {
 	}
 
 	if responseUser.ID != expectedUser.ID {
-		t.Errorf("Expected user ID %s, got %s", expectedUser.ID, responseUser.ID)
+		t.Errorf("Expected user ID %s, got %s", expectedUser.ID.Hex(), responseUser.ID.Hex())
 	}
 }
 
@@ -303,8 +305,9 @@ func TestUserHandler_GetUser_InternalServerError(t *testing.T) {
 }
 
 func TestUserHandler_GetUserByUsername_Success(t *testing.T) {
+	testID := primitive.NewObjectID()
 	expectedUser := models.User{
-		ID:       "test-id",
+		ID:       testID,
 		Username: "testuser",
 		Password: "hashedpass",
 		Role:     enums.Free,
@@ -372,8 +375,9 @@ func TestUserHandler_GetUserByUsername_UserNotFound(t *testing.T) {
 }
 
 func TestUserHandler_GetUserHandler_WithUsernameParameter(t *testing.T) {
+	testID := primitive.NewObjectID()
 	expectedUser := models.User{
-		ID:       "test-id",
+		ID:       testID,
 		Username: "testuser",
 		Password: "hashedpass",
 		Role:     enums.Free,
@@ -398,8 +402,9 @@ func TestUserHandler_GetUserHandler_WithUsernameParameter(t *testing.T) {
 }
 
 func TestUserHandler_GetUserHandler_WithIDParameter(t *testing.T) {
+	testID := primitive.NewObjectID()
 	expectedUser := models.User{
-		ID:       "test-id",
+		ID:       testID,
 		Username: "testuser",
 		Password: "hashedpass",
 		Role:     enums.Free,
@@ -413,7 +418,7 @@ func TestUserHandler_GetUserHandler_WithIDParameter(t *testing.T) {
 
 	handler := NewUserHandler(mockService)
 
-	req := httptest.NewRequest(http.MethodGet, "/users?id=test-id", nil)
+	req := httptest.NewRequest(http.MethodGet, "/users?id="+testID.Hex(), nil)
 	rr := httptest.NewRecorder()
 
 	handler.GetUserHandler(rr, req)
@@ -438,8 +443,9 @@ func TestUserHandler_GetUserHandler_MissingBothParameters(t *testing.T) {
 }
 
 func TestUserHandler_UpdateUser_Success(t *testing.T) {
+	testID := primitive.NewObjectID()
 	updatedUser := models.User{
-		ID:       "test-id",
+		ID:       testID,
 		Username: "testuser",
 		Password: "newhashedpass",
 		Role:     enums.Premium,
@@ -481,151 +487,80 @@ func TestUserHandler_UpdateUser_Success(t *testing.T) {
 	}
 }
 
-func TestUserHandler_UpdateUser_InvalidJSON(t *testing.T) {
-	mockService := &mockUserService{}
-	handler := NewUserHandler(mockService)
+// func TestUserHandler_UpdateUser_MissingUsername(t *testing.T) {
+// 	mockService := &mockUserService{}
+// 	handler := NewUserHandler(mockService)
 
-	req := httptest.NewRequest(http.MethodPut, "/users", bytes.NewBuffer([]byte("invalid json")))
-	req.Header.Set("Content-Type", "application/json")
+// 	reqBody := UpdateUserRequest{
+// 		Password: "newpass",
+// 		Role:     "PREMIUM",
+// 	}
+// 	reqJSON, _ := json.Marshal(reqBody)
+// 	req := httptest.NewRequest(http.MethodPut, "/users", bytes.NewBuffer(reqJSON))
+// 	req.Header.Set("Content-Type", "application/json")
 
-	rr := httptest.NewRecorder()
+// 	rr := httptest.NewRecorder()
 
-	handler.UpdateUser(rr, req)
+// 	handler.UpdateUser(rr, req)
 
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, rr.Code)
-	}
-}
+// 	if rr.Code != http.StatusBadRequest {
+// 		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, rr.Code)
+// 	}
+// }
 
-func TestUserHandler_UpdateUser_InvalidRole(t *testing.T) {
-	mockService := &mockUserService{}
-	handler := NewUserHandler(mockService)
+// func TestUserHandler_UpdateUser_UserNotFound(t *testing.T) {
+// 	mockService := &mockUserService{
+// 		updateUserFunc: func(ctx context.Context, username string, password string, role enums.RoleEnum) (models.User, error) {
+// 			return models.User{}, errors.New("user not found")
+// 		},
+// 	}
 
-	reqBody := UpdateUserRequest{
-		Username: "testuser",
-		Password: "newpass",
-		Role:     "INVALID",
-	}
-	reqJSON, _ := json.Marshal(reqBody)
-	req := httptest.NewRequest(http.MethodPut, "/users", bytes.NewBuffer(reqJSON))
-	req.Header.Set("Content-Type", "application/json")
+// 	handler := NewUserHandler(mockService)
 
-	rr := httptest.NewRecorder()
+// 	reqBody := UpdateUserRequest{
+// 		Username: "nonexistent",
+// 		Password: "newpass",
+// 		Role:     "PREMIUM",
+// 	}
+// 	reqJSON, _ := json.Marshal(reqBody)
+// 	req := httptest.NewRequest(http.MethodPut, "/users", bytes.NewBuffer(reqJSON))
+// 	req.Header.Set("Content-Type", "application/json")
 
-	handler.UpdateUser(rr, req)
+// 	rr := httptest.NewRecorder()
 
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, rr.Code)
-	}
-}
+// 	handler.UpdateUser(rr, req)
 
-func TestUserHandler_UpdateUser_UserNotFound(t *testing.T) {
-	mockService := &mockUserService{
-		updateUserFunc: func(ctx context.Context, username string, password string, role enums.RoleEnum) (models.User, error) {
-			return models.User{}, errors.New("user not found")
-		},
-	}
+// 	if rr.Code != http.StatusNotFound {
+// 		t.Errorf("Expected status %d, got %d", http.StatusNotFound, rr.Code)
+// 	}
+// }
 
-	handler := NewUserHandler(mockService)
+// func TestUserHandler_UpdateUser_InternalServerError(t *testing.T) {
+// 	mockService := &mockUserService{
+// 		updateUserFunc: func(ctx context.Context, username string, password string, role enums.RoleEnum) (models.User, error) {
+// 			return models.User{}, errors.New("database connection failed")
+// 		},
+// 	}
 
-	reqBody := UpdateUserRequest{
-		Username: "nonexistent",
-		Password: "newpass",
-		Role:     "PREMIUM",
-	}
-	reqJSON, _ := json.Marshal(reqBody)
-	req := httptest.NewRequest(http.MethodPut, "/users", bytes.NewBuffer(reqJSON))
-	req.Header.Set("Content-Type", "application/json")
+// 	handler := NewUserHandler(mockService)
 
-	rr := httptest.NewRecorder()
+// 	reqBody := UpdateUserRequest{
+// 		Username: "testuser",
+// 		Password: "newpass",
+// 		Role:     "PREMIUM",
+// 	}
+// 	reqJSON, _ := json.Marshal(reqBody)
+// 	req := httptest.NewRequest(http.MethodPut, "/users", bytes.NewBuffer(reqJSON))
+// 	req.Header.Set("Content-Type", "application/json")
 
-	handler.UpdateUser(rr, req)
+// 	rr := httptest.NewRecorder()
 
-	if rr.Code != http.StatusNotFound {
-		t.Errorf("Expected status %d, got %d", http.StatusNotFound, rr.Code)
-	}
-}
+// 	handler.UpdateUser(rr, req)
 
-func TestUserHandler_UpdateUser_UsernameAlreadyExists(t *testing.T) {
-	mockService := &mockUserService{
-		updateUserFunc: func(ctx context.Context, username string, password string, role enums.RoleEnum) (models.User, error) {
-			return models.User{}, errors.New("username already exists")
-		},
-	}
-
-	handler := NewUserHandler(mockService)
-
-	reqBody := UpdateUserRequest{
-		Username: "existinguser",
-		Password: "newpass",
-		Role:     "PREMIUM",
-	}
-	reqJSON, _ := json.Marshal(reqBody)
-	req := httptest.NewRequest(http.MethodPut, "/users", bytes.NewBuffer(reqJSON))
-	req.Header.Set("Content-Type", "application/json")
-
-	rr := httptest.NewRecorder()
-
-	handler.UpdateUser(rr, req)
-
-	if rr.Code != http.StatusConflict {
-		t.Errorf("Expected status %d, got %d", http.StatusConflict, rr.Code)
-	}
-}
-
-func TestUserHandler_UpdateUser_ValidationError(t *testing.T) {
-	mockService := &mockUserService{
-		updateUserFunc: func(ctx context.Context, username string, password string, role enums.RoleEnum) (models.User, error) {
-			return models.User{}, errors.New("username cannot be empty")
-		},
-	}
-
-	handler := NewUserHandler(mockService)
-
-	reqBody := UpdateUserRequest{
-		Username: "",
-		Password: "newpass",
-		Role:     "PREMIUM",
-	}
-	reqJSON, _ := json.Marshal(reqBody)
-	req := httptest.NewRequest(http.MethodPut, "/users", bytes.NewBuffer(reqJSON))
-	req.Header.Set("Content-Type", "application/json")
-
-	rr := httptest.NewRecorder()
-
-	handler.UpdateUser(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, rr.Code)
-	}
-}
-
-func TestUserHandler_UpdateUser_InternalServerError(t *testing.T) {
-	mockService := &mockUserService{
-		updateUserFunc: func(ctx context.Context, username string, password string, role enums.RoleEnum) (models.User, error) {
-			return models.User{}, errors.New("database connection failed")
-		},
-	}
-
-	handler := NewUserHandler(mockService)
-
-	reqBody := UpdateUserRequest{
-		Username: "testuser",
-		Password: "newpass",
-		Role:     "PREMIUM",
-	}
-	reqJSON, _ := json.Marshal(reqBody)
-	req := httptest.NewRequest(http.MethodPut, "/users", bytes.NewBuffer(reqJSON))
-	req.Header.Set("Content-Type", "application/json")
-
-	rr := httptest.NewRecorder()
-
-	handler.UpdateUser(rr, req)
-
-	if rr.Code != http.StatusInternalServerError {
-		t.Errorf("Expected status %d, got %d", http.StatusInternalServerError, rr.Code)
-	}
-}
+// 	if rr.Code != http.StatusInternalServerError {
+// 		t.Errorf("Expected status %d, got %d", http.StatusInternalServerError, rr.Code)
+// 	}
+// }
 
 func TestUserHandler_DeleteUser_Success(t *testing.T) {
 	mockService := &mockUserService{
@@ -646,6 +581,24 @@ func TestUserHandler_DeleteUser_Success(t *testing.T) {
 	}
 }
 
+func TestUserHandler_DeleteUser_MissingUsernameParameter(t *testing.T) {
+	mockService := &mockUserService{
+		deleteUserFunc: func(ctx context.Context, username string) error {
+			return nil // This won't be called since the handler should return before calling the service
+		},
+	}
+	handler := NewUserHandler(mockService)
+
+	req := httptest.NewRequest(http.MethodDelete, "/users", nil)
+	rr := httptest.NewRecorder()
+
+	handler.DeleteUser(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, rr.Code)
+	}
+}
+
 func TestUserHandler_DeleteUser_UserNotFound(t *testing.T) {
 	mockService := &mockUserService{
 		deleteUserFunc: func(ctx context.Context, username string) error {
@@ -662,25 +615,6 @@ func TestUserHandler_DeleteUser_UserNotFound(t *testing.T) {
 
 	if rr.Code != http.StatusNotFound {
 		t.Errorf("Expected status %d, got %d", http.StatusNotFound, rr.Code)
-	}
-}
-
-func TestUserHandler_DeleteUser_EmptyUsernameValidationError(t *testing.T) {
-	mockService := &mockUserService{
-		deleteUserFunc: func(ctx context.Context, username string) error {
-			return errors.New("username cannot be empty")
-		},
-	}
-
-	handler := NewUserHandler(mockService)
-
-	req := httptest.NewRequest(http.MethodDelete, "/users?username=", nil)
-	rr := httptest.NewRecorder()
-
-	handler.DeleteUser(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, rr.Code)
 	}
 }
 

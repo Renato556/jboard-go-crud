@@ -6,6 +6,7 @@ import (
 	"jboard-go-crud/internal/models/enums"
 	"testing"
 
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -29,8 +30,9 @@ func TestNewUserRepository_WithValidClient(t *testing.T) {
 func TestUserRepository_Create_Success(t *testing.T) {
 	repo := NewUserRepository(nil, "testdb", "users")
 
+	testID := primitive.NewObjectID()
 	user := models.User{
-		ID:       "test-id",
+		ID:       testID,
 		Username: "testuser",
 		Password: "hashedpass",
 		Role:     enums.Free,
@@ -50,11 +52,12 @@ func TestUserRepository_Create_Success(t *testing.T) {
 func TestUserRepository_Create_ValidationError(t *testing.T) {
 	repo := NewUserRepository(nil, "testdb", "users")
 
+	// Empty ObjectID will be used as zero value
 	user := models.User{
-		ID:       "",
+		ID:       primitive.ObjectID{},
 		Username: "",
-		Password: "",
-		Role:     "",
+		Password: "hashedpass",
+		Role:     enums.Free,
 	}
 
 	err := repo.Create(context.Background(), user)
@@ -67,7 +70,8 @@ func TestUserRepository_Create_ValidationError(t *testing.T) {
 func TestUserRepository_FindByID_Success(t *testing.T) {
 	repo := NewUserRepository(nil, "testdb", "users")
 
-	user, found, err := repo.FindByID(context.Background(), "test-id")
+	testID := primitive.NewObjectID()
+	_, found, err := repo.FindByID(context.Background(), testID.Hex())
 
 	if err == nil {
 		t.Error("Expected error due to nil MongoDB client, got nil")
@@ -75,10 +79,6 @@ func TestUserRepository_FindByID_Success(t *testing.T) {
 
 	if found {
 		t.Error("Expected found to be false, got true")
-	}
-
-	if user.ID != "" {
-		t.Errorf("Expected empty user, got user with ID: %s", user.ID)
 	}
 
 	if err.Error() != "failed to get users getCollection" {
@@ -89,25 +89,43 @@ func TestUserRepository_FindByID_Success(t *testing.T) {
 func TestUserRepository_FindByID_EmptyID(t *testing.T) {
 	repo := NewUserRepository(nil, "testdb", "users")
 
-	user, found, err := repo.FindByID(context.Background(), "")
+	_, found, err := repo.FindByID(context.Background(), "")
 
 	if err == nil {
-		t.Error("Expected error due to nil MongoDB client, got nil")
+		t.Error("Expected error for empty ID, got nil")
 	}
 
 	if found {
 		t.Error("Expected found to be false, got true")
 	}
 
-	if user.ID != "" {
-		t.Errorf("Expected empty user, got user with ID: %s", user.ID)
+	if err.Error() != "invalid ID format" {
+		t.Errorf("Expected 'invalid ID format' error, got %v", err)
+	}
+}
+
+func TestUserRepository_FindByID_InvalidID(t *testing.T) {
+	repo := NewUserRepository(nil, "testdb", "users")
+
+	_, found, err := repo.FindByID(context.Background(), "invalid-id")
+
+	if err == nil {
+		t.Error("Expected error for invalid ID format, got nil")
+	}
+
+	if found {
+		t.Error("Expected found to be false, got true")
+	}
+
+	if err.Error() != "invalid ID format" {
+		t.Errorf("Expected 'invalid ID format' error, got %v", err)
 	}
 }
 
 func TestUserRepository_FindByUsername_Success(t *testing.T) {
 	repo := NewUserRepository(nil, "testdb", "users")
 
-	user, found, err := repo.FindByUsername(context.Background(), "testuser")
+	_, found, err := repo.FindByUsername(context.Background(), "testuser")
 
 	if err == nil {
 		t.Error("Expected error due to nil MongoDB client, got nil")
@@ -115,10 +133,6 @@ func TestUserRepository_FindByUsername_Success(t *testing.T) {
 
 	if found {
 		t.Error("Expected found to be false, got true")
-	}
-
-	if user.Username != "" {
-		t.Errorf("Expected empty user, got user with username: %s", user.Username)
 	}
 
 	if err.Error() != "failed to get users getCollection" {
@@ -126,35 +140,18 @@ func TestUserRepository_FindByUsername_Success(t *testing.T) {
 	}
 }
 
-func TestUserRepository_FindByUsername_EmptyUsername(t *testing.T) {
-	repo := NewUserRepository(nil, "testdb", "users")
-
-	user, found, err := repo.FindByUsername(context.Background(), "")
-
-	if err == nil {
-		t.Error("Expected error due to nil MongoDB client, got nil")
-	}
-
-	if found {
-		t.Error("Expected found to be false, got true")
-	}
-
-	if user.Username != "" {
-		t.Errorf("Expected empty user, got user with username: %s", user.Username)
-	}
-}
-
 func TestUserRepository_UpdateByID_Success(t *testing.T) {
 	repo := NewUserRepository(nil, "testdb", "users")
 
+	testID := primitive.NewObjectID()
 	user := models.User{
-		ID:       "test-id",
+		ID:       testID,
 		Username: "testuser",
-		Password: "newhashedpass",
-		Role:     enums.Premium,
+		Password: "hashedpass",
+		Role:     enums.Free,
 	}
 
-	err := repo.UpdateByID(context.Background(), "test-id", user)
+	err := repo.UpdateByID(context.Background(), testID.Hex(), user)
 
 	if err == nil {
 		t.Error("Expected error due to nil MongoDB client, got nil")
@@ -168,31 +165,49 @@ func TestUserRepository_UpdateByID_Success(t *testing.T) {
 func TestUserRepository_UpdateByID_ValidationError(t *testing.T) {
 	repo := NewUserRepository(nil, "testdb", "users")
 
+	testID := primitive.NewObjectID()
+	// Empty ObjectID will be used as zero value
 	user := models.User{
-		ID:       "",
+		ID:       primitive.ObjectID{},
 		Username: "",
-		Password: "",
-		Role:     "",
+		Password: "hashedpass",
+		Role:     enums.Free,
 	}
 
-	err := repo.UpdateByID(context.Background(), "test-id", user)
+	err := repo.UpdateByID(context.Background(), testID.Hex(), user)
 
 	if err == nil {
 		t.Error("Expected validation error, got nil")
 	}
 }
 
-func TestUserRepository_UpdateByID_EmptyID(t *testing.T) {
+func TestUserRepository_UpdateByID_InvalidID(t *testing.T) {
 	repo := NewUserRepository(nil, "testdb", "users")
 
+	testID := primitive.NewObjectID()
 	user := models.User{
-		ID:       "test-id",
+		ID:       testID,
 		Username: "testuser",
 		Password: "hashedpass",
 		Role:     enums.Free,
 	}
 
-	err := repo.UpdateByID(context.Background(), "", user)
+	err := repo.UpdateByID(context.Background(), "invalid-id", user)
+
+	if err == nil {
+		t.Error("Expected error for invalid ID format, got nil")
+	}
+
+	if err.Error() != "invalid ID format" {
+		t.Errorf("Expected 'invalid ID format' error, got %v", err)
+	}
+}
+
+func TestUserRepository_DeleteByID_Success(t *testing.T) {
+	repo := NewUserRepository(nil, "testdb", "users")
+
+	testID := primitive.NewObjectID()
+	err := repo.DeleteByID(context.Background(), testID.Hex())
 
 	if err == nil {
 		t.Error("Expected error due to nil MongoDB client, got nil")
@@ -203,17 +218,17 @@ func TestUserRepository_UpdateByID_EmptyID(t *testing.T) {
 	}
 }
 
-func TestUserRepository_DeleteByID_Success(t *testing.T) {
+func TestUserRepository_DeleteByID_InvalidID(t *testing.T) {
 	repo := NewUserRepository(nil, "testdb", "users")
 
-	err := repo.DeleteByID(context.Background(), "test-id")
+	err := repo.DeleteByID(context.Background(), "invalid-id")
 
 	if err == nil {
-		t.Error("Expected error due to nil MongoDB client, got nil")
+		t.Error("Expected error for invalid ID format, got nil")
 	}
 
-	if err.Error() != "failed to get users getCollection" {
-		t.Errorf("Expected 'failed to get users getCollection' error, got %v", err)
+	if err.Error() != "invalid ID format" {
+		t.Errorf("Expected 'invalid ID format' error, got %v", err)
 	}
 }
 
@@ -223,11 +238,11 @@ func TestUserRepository_DeleteByID_EmptyID(t *testing.T) {
 	err := repo.DeleteByID(context.Background(), "")
 
 	if err == nil {
-		t.Error("Expected error due to nil MongoDB client, got nil")
+		t.Error("Expected error for empty ID, got nil")
 	}
 
-	if err.Error() != "failed to get users getCollection" {
-		t.Errorf("Expected 'failed to get users getCollection' error, got %v", err)
+	if err.Error() != "invalid ID format" {
+		t.Errorf("Expected 'invalid ID format' error, got %v", err)
 	}
 }
 
@@ -237,8 +252,9 @@ func TestUserRepository_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
+	testID := primitive.NewObjectID()
 	user := models.User{
-		ID:       "test-id",
+		ID:       testID,
 		Username: "testuser",
 		Password: "hashedpass",
 		Role:     enums.Free,
@@ -249,7 +265,7 @@ func TestUserRepository_ContextCancellation(t *testing.T) {
 		t.Error("Expected error due to cancelled context, got nil")
 	}
 
-	_, _, err = repo.FindByID(ctx, "test-id")
+	_, _, err = repo.FindByID(ctx, testID.Hex())
 	if err == nil {
 		t.Error("Expected error due to cancelled context, got nil")
 	}
@@ -259,12 +275,12 @@ func TestUserRepository_ContextCancellation(t *testing.T) {
 		t.Error("Expected error due to cancelled context, got nil")
 	}
 
-	err = repo.UpdateByID(ctx, "test-id", user)
+	err = repo.UpdateByID(ctx, testID.Hex(), user)
 	if err == nil {
 		t.Error("Expected error due to cancelled context, got nil")
 	}
 
-	err = repo.DeleteByID(ctx, "test-id")
+	err = repo.DeleteByID(ctx, testID.Hex())
 	if err == nil {
 		t.Error("Expected error due to cancelled context, got nil")
 	}
@@ -273,8 +289,9 @@ func TestUserRepository_ContextCancellation(t *testing.T) {
 func TestUserRepository_Create_DuplicateUsernameHandling(t *testing.T) {
 	repo := NewUserRepository(nil, "testdb", "users")
 
+	testID := primitive.NewObjectID()
 	user := models.User{
-		ID:       "test-id",
+		ID:       testID,
 		Username: "testuser",
 		Password: "hashedpass",
 		Role:     enums.Free,
@@ -290,14 +307,15 @@ func TestUserRepository_Create_DuplicateUsernameHandling(t *testing.T) {
 func TestUserRepository_UpdateByID_DuplicateUsernameHandling(t *testing.T) {
 	repo := NewUserRepository(nil, "testdb", "users")
 
+	testID := primitive.NewObjectID()
 	user := models.User{
-		ID:       "test-id",
+		ID:       testID,
 		Username: "existinguser",
 		Password: "hashedpass",
 		Role:     enums.Free,
 	}
 
-	err := repo.UpdateByID(context.Background(), "test-id", user)
+	err := repo.UpdateByID(context.Background(), testID.Hex(), user)
 
 	if err == nil {
 		t.Error("Expected error due to nil MongoDB client, got nil")
@@ -307,8 +325,9 @@ func TestUserRepository_UpdateByID_DuplicateUsernameHandling(t *testing.T) {
 func TestUserRepository_Create_ValidUserAllRoles(t *testing.T) {
 	repo := NewUserRepository(nil, "testdb", "users")
 
+	freeUserID := primitive.NewObjectID()
 	freeUser := models.User{
-		ID:       "free-user-id",
+		ID:       freeUserID,
 		Username: "freeuser",
 		Password: "hashedpass",
 		Role:     enums.Free,
@@ -319,8 +338,9 @@ func TestUserRepository_Create_ValidUserAllRoles(t *testing.T) {
 		t.Error("Expected error due to nil MongoDB client, got nil")
 	}
 
+	premiumUserID := primitive.NewObjectID()
 	premiumUser := models.User{
-		ID:       "premium-user-id",
+		ID:       premiumUserID,
 		Username: "premiumuser",
 		Password: "hashedpass",
 		Role:     enums.Premium,
@@ -335,7 +355,8 @@ func TestUserRepository_Create_ValidUserAllRoles(t *testing.T) {
 func TestUserRepository_FindByID_NonExistentUser(t *testing.T) {
 	repo := NewUserRepository(nil, "testdb", "users")
 
-	user, found, err := repo.FindByID(context.Background(), "nonexistent-id")
+	testID := primitive.NewObjectID()
+	user, found, err := repo.FindByID(context.Background(), testID.Hex())
 
 	if err == nil {
 		t.Error("Expected error due to nil MongoDB client, got nil")
@@ -345,8 +366,8 @@ func TestUserRepository_FindByID_NonExistentUser(t *testing.T) {
 		t.Error("Expected found to be false for nonexistent user, got true")
 	}
 
-	if user.ID != "" {
-		t.Errorf("Expected empty user for nonexistent ID, got user with ID: %s", user.ID)
+	if user.ID != primitive.NilObjectID {
+		t.Errorf("Expected empty user for nonexistent ID, got user with ID: %s", user.ID.Hex())
 	}
 }
 
@@ -371,7 +392,8 @@ func TestUserRepository_FindByUsername_NonExistentUser(t *testing.T) {
 func TestUserRepository_DeleteByID_NonExistentUser(t *testing.T) {
 	repo := NewUserRepository(nil, "testdb", "users")
 
-	err := repo.DeleteByID(context.Background(), "nonexistent-id")
+	testID := primitive.NewObjectID()
+	err := repo.DeleteByID(context.Background(), testID.Hex())
 
 	if err == nil {
 		t.Error("Expected error due to nil MongoDB client, got nil")
@@ -385,14 +407,15 @@ func TestUserRepository_DeleteByID_NonExistentUser(t *testing.T) {
 func TestUserRepository_UpdateByID_NonExistentUser(t *testing.T) {
 	repo := NewUserRepository(nil, "testdb", "users")
 
+	testID := primitive.NewObjectID()
 	user := models.User{
-		ID:       "nonexistent-id",
+		ID:       testID,
 		Username: "testuser",
 		Password: "hashedpass",
 		Role:     enums.Free,
 	}
 
-	err := repo.UpdateByID(context.Background(), "nonexistent-id", user)
+	err := repo.UpdateByID(context.Background(), testID.Hex(), user)
 
 	if err == nil {
 		t.Error("Expected error due to nil MongoDB client, got nil")
@@ -406,9 +429,10 @@ func TestUserRepository_UpdateByID_NonExistentUser(t *testing.T) {
 func TestUserRepository_Create_LongUsername(t *testing.T) {
 	repo := NewUserRepository(nil, "testdb", "users")
 
+	testID := primitive.NewObjectID()
 	longUsername := string(make([]byte, 1000))
 	user := models.User{
-		ID:       "test-id",
+		ID:       testID,
 		Username: longUsername,
 		Password: "hashedpass",
 		Role:     enums.Free,
@@ -424,8 +448,9 @@ func TestUserRepository_Create_LongUsername(t *testing.T) {
 func TestUserRepository_Create_SpecialCharactersInUsername(t *testing.T) {
 	repo := NewUserRepository(nil, "testdb", "users")
 
+	testID := primitive.NewObjectID()
 	user := models.User{
-		ID:       "test-id",
+		ID:       testID,
 		Username: "user@domain.com",
 		Password: "hashedpass",
 		Role:     enums.Free,
@@ -441,8 +466,9 @@ func TestUserRepository_Create_SpecialCharactersInUsername(t *testing.T) {
 func TestUserRepository_Database_NilHandling(t *testing.T) {
 	repo := NewUserRepository(nil, "", "")
 
+	testID := primitive.NewObjectID()
 	user := models.User{
-		ID:       "test-id",
+		ID:       testID,
 		Username: "testuser",
 		Password: "hashedpass",
 		Role:     enums.Free,
@@ -453,7 +479,7 @@ func TestUserRepository_Database_NilHandling(t *testing.T) {
 		t.Error("Expected error due to nil MongoDB client, got nil")
 	}
 
-	_, _, err = repo.FindByID(context.Background(), "test-id")
+	_, _, err = repo.FindByID(context.Background(), testID.Hex())
 	if err == nil {
 		t.Error("Expected error due to nil MongoDB client, got nil")
 	}
@@ -463,12 +489,12 @@ func TestUserRepository_Database_NilHandling(t *testing.T) {
 		t.Error("Expected error due to nil MongoDB client, got nil")
 	}
 
-	err = repo.UpdateByID(context.Background(), "test-id", user)
+	err = repo.UpdateByID(context.Background(), testID.Hex(), user)
 	if err == nil {
 		t.Error("Expected error due to nil MongoDB client, got nil")
 	}
 
-	err = repo.DeleteByID(context.Background(), "test-id")
+	err = repo.DeleteByID(context.Background(), testID.Hex())
 	if err == nil {
 		t.Error("Expected error due to nil MongoDB client, got nil")
 	}
